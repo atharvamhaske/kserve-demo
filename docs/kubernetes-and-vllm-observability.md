@@ -11,13 +11,14 @@ Use it with these workshop documents:
 
 ## Evidence labels
 
-This guide uses three labels:
+This guide uses four labels:
 
 - Observed lab fact: Evidence came from the workshop output.
+- Verified lab procedure: The complete procedure ran successfully on the WSL Minikube cluster.
 - Repository behavior: The current provider source, chart, or dashboard defines this behavior.
 - Unverified procedure: The lab has not completed this procedure. Do not present it as a result.
 
-Do not infer a live Pod inventory from namespace names. The workshop has not supplied `kubectl get pods -A` output.
+The final observability run included a complete all-namespace Pod inventory. Commands still discover live names instead of assuming that old Pod names remain valid.
 
 ## Physical and Kubernetes layers
 
@@ -123,9 +124,11 @@ kubectl --context "$PROFILE" get podmonitors.monitoring.coreos.com -A
 | KServe controller Pod | Reconciles KServe CRs into workloads and networking | KServe controller Deployment | Read all namespaces and chart releases. |
 | vLLM model Pod | Serves the model and `/metrics` on port 8000 | KServe workload, commonly through a Deployment or LeaderWorkerSet | Select by labels. Do not copy an old Pod name. |
 | cert-manager Pod | Reconciles certificate resources | cert-manager Deployment | Read `cert-manager` and owner references. |
-| Prometheus Operator Pod | Reconciles `Prometheus` and `PodMonitor` resources | Monitoring stack Deployment | Treat as optional until inventory proves it. |
-| Prometheus Pod | Scrapes and stores metrics | `Prometheus` CR through the operator | Treat as optional until inventory proves it. |
-| Grafana Pod | Queries data sources and renders dashboards | Monitoring chart or platform Deployment | Treat as optional until inventory proves it. |
+| Prometheus Operator Pod | Reconciles `Prometheus` and `PodMonitor` resources | kube-prometheus-stack Deployment | Verified in `monitoring-demo`; inventory the live Deployment. |
+| Prometheus Pod | Scrapes and stores metrics | `Prometheus` CR through the operator | Verified in `monitoring-demo`; discover the StatefulSet Pod dynamically. |
+| Grafana Pod | Queries Prometheus and Tempo and renders dashboards | kube-prometheus-stack Deployment | Verified in `monitoring-demo`; discover the Deployment Pod dynamically. |
+| OpenTelemetry Collector Pod | Receives, batches, and exports OTLP spans | OpenTelemetry Collector Deployment | Verified in `cert-manager`; its Service name must match the KServe endpoint. |
+| Tempo Pod | Stores and queries traces | Tempo StatefulSet | Verified in `monitoring-demo`; this lab uses ephemeral trace storage. |
 | Gateway controller and proxy Pods | Reconcile and serve the optional gateway path | Envoy Gateway and AI Gateway resources | Treat as optional and unverified in this lab. |
 
 ## Control plane and CRD ownership
@@ -329,130 +332,628 @@ curl --fail-with-body --silent --show-error "$REQUEST_URL" \
 
 KV cache and prefix cache answer different questions. KV-cache use measures occupied capacity. Prefix-cache hits measure reused prompt tokens. High KV use does not imply a high prefix hit rate.
 
-## Prometheus and Grafana
+## Verified Prometheus and Grafana deployment
 
-Repository behavior: The provider does not install Prometheus or Grafana. It creates one `PodMonitor` per Instance only when both conditions pass:
+Repository behavior: provider-kserve does not install Prometheus or Grafana. It creates one `PodMonitor` per Instance only when metrics are enabled and the `monitoring.coreos.com/v1` `PodMonitor` CRD exists.
 
-1. Metrics are enabled for the provider and the Instance.
-2. The `monitoring.coreos.com/v1` `PodMonitor` CRD exists.
-
-The provider skips `PodMonitor` creation without failing reconciliation when that CRD is absent.
+The verified metrics path is:
 
 ```mermaid
 flowchart LR
-    PK["provider-kserve"] -->|creates per Instance| PM["PodMonitor"]
-    PO["Prometheus Operator"] -->|selects PodMonitor| PM
-    PM -->|selects model Pod| V["vLLM :8000/metrics"]
-    Prom["Prometheus"] -->|scrapes every configured interval| V
-    PO -->|generates scrape configuration| Prom
-    Graf["Grafana"] -->|PromQL through data source| Prom
+    PK["provider-kserve"] -->|creates| PM["PodMonitor inst-izu-metrics"]
+    PM -->|selects labels| V["vLLM Pod :8000/metrics"]
+    PO["Prometheus Operator"] -->|reconciles| Prom["Prometheus"]
+    Prom -->|scrapes every 30 seconds| V
+    Graf["Grafana"] -->|PromQL| Prom
 ```
 
-There are four selector steps:
+### Verified component versions
 
-1. `Prometheus.spec.podMonitorNamespaceSelector` selects namespaces that contain `PodMonitor` objects.
-2. `Prometheus.spec.podMonitorSelector` selects `PodMonitor` metadata labels.
-3. `PodMonitor.spec.namespaceSelector` selects target Pod namespaces. The provider omits it, so it targets its own namespace.
-4. `PodMonitor.spec.selector` selects Pod labels in that namespace.
+| Component | Verified version |
+|---|---|
+| kube-prometheus-stack chart | `92.11.0` |
+| Prometheus | `v3.15.0-distroless` |
+| Grafana | `13.2.4` |
+| Tempo chart | `3.2.1` |
+| Tempo | `3.1.1` |
+| OpenTelemetry Collector chart | `0.177.0` |
+| OpenTelemetry Collector | `0.163.2` |
 
-A `PodMonitor` can exist and still be ignored. A label-filtered Prometheus commonly excludes an unlabeled monitor. A Prometheus in `everest-monitoring` can also exclude monitors in `default` through its namespace selector.
+The monitoring stack ran in `monitoring-demo`. The model Instance, generated `PodMonitor`, vLLM Pod, and OpenTelemetry Collector ran in `cert-manager`. Keeping an application model in `cert-manager` is not recommended, but this placement documents the verified lab instead of rewriting its history.
 
-Unverified, resource-conscious test plan:
+### Inventory before installation
 
-1. Inventory before installing anything.
-2. Record available node CPU and memory. Keep the single GPU model at one replica.
-3. If the stack is absent, use the platform-approved Prometheus Operator and Grafana installation documentation.
-4. Start with short retention, one test replica, and bounded storage where the selected distribution supports those settings.
-5. Do not copy chart values from another platform. This guide does not establish exact installation values for this lab.
-6. Make sure that Prometheus selects the Instance namespace and the generated `PodMonitor`.
-7. Inspect the Prometheus target page for the vLLM endpoint.
-8. Query a raw vLLM series before importing a dashboard.
-9. Import the provider `docs/dashboards/vllm.json` dashboard only after the raw query returns data.
-10. Remove the test stack or return retention and storage settings to the platform standard after the workshop.
+Run the inventory first. The existence of `everest-monitoring` does not prove that Prometheus Operator, Prometheus, or Grafana is installed.
 
 ```bash
-kubectl --context "$PROFILE" get crd podmonitors.monitoring.coreos.com \
+export PROFILE=everest-gpu
+kubectl --context "$PROFILE" get pods -A -o wide
+kubectl --context "$PROFILE" get instances.core.openeverest.io -A
+kubectl --context "$PROFILE" get llminferenceservices.serving.kserve.io -A
+helm --kube-context "$PROFILE" list -A
+kubectl --context "$PROFILE" get crd podmonitors.monitoring.coreos.com
+kubectl --context "$PROFILE" get crd prometheuses.monitoring.coreos.com
+```
+
+Before installation, both monitoring CRD lookups returned `NotFound`. The `everest-monitoring` namespace contained VictoriaMetrics Operator integration, not this Prometheus and Grafana stack.
+
+### Install the bounded monitoring stack
+
+The final values keep one Prometheus replica, short retention, no persistent storage, and no Alertmanager, node-exporter, or kube-state-metrics workload. Prometheus discovers `PodMonitor` objects across namespaces without requiring a Helm release label.
+
+```bash
+helm repo add prometheus-community \
+  https://prometheus-community.github.io/helm-charts \
+  --force-update
+helm repo update
+
+kubectl --context "$PROFILE" create namespace monitoring-demo \
+  --dry-run=client -o yaml \
+  | kubectl --context "$PROFILE" apply -f -
+
+cat >/tmp/kube-prometheus-stack-values.yaml <<'EOF'
+alertmanager:
+  enabled: false
+
+grafana:
+  enabled: true
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+kubeStateMetrics:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    scrapeInterval: 15s
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+EOF
+
+helm upgrade --install observability \
+  prometheus-community/kube-prometheus-stack \
+  --namespace monitoring-demo \
+  --values /tmp/kube-prometheus-stack-values.yaml \
+  --wait \
+  --timeout 10m
+```
+
+Verify the controllers and API types:
+
+```bash
+kubectl --context "$PROFILE" -n monitoring-demo get pods
+kubectl --context "$PROFILE" get crd \
+  podmonitors.monitoring.coreos.com \
   prometheuses.monitoring.coreos.com
 kubectl --context "$PROFILE" get prometheuses.monitoring.coreos.com -A
-kubectl --context "$PROFILE" get podmonitors.monitoring.coreos.com -A
-kubectl --context "$PROFILE" -n "$INSTANCE_NS" get podmonitors.monitoring.coreos.com -o yaml
-kubectl --context "$PROFILE" get prometheuses.monitoring.coreos.com -A \
-  -o jsonpath='{range .items[*]}{.metadata.namespace}{"/"}{.metadata.name}{": podMonitorSelector="}{.spec.podMonitorSelector}{" namespaceSelector="}{.spec.podMonitorNamespaceSelector}{"\n"}{end}'
-kubectl --context "$PROFILE" -n "$INSTANCE_NS" get pods --show-labels
-kubectl --context "$PROFILE" top nodes
 ```
 
-The last command requires Metrics Server. Its failure does not prove that Prometheus is absent.
+### Trigger PodMonitor reconciliation
 
-The provider dashboard covers token rates, running and waiting requests, TTFT, inter-token latency, KV use, end-to-end latency, successes, and preemptions. Grafana only renders queries. Prometheus performs metric collection and storage.
+The Instance already had `enableMetrics: true`. The provider had reconciled it before the Prometheus Operator CRD existed, so no `PodMonitor` was present immediately after the monitoring installation.
 
-The presence of `everest-monitoring` alone proves none of these components exist.
+Touching an annotation generated another Instance event without changing model configuration:
 
-## OpenTelemetry traces
+```bash
+export INSTANCE_NS=cert-manager
+export INSTANCE=inst-izu
 
-Metrics and traces are separate telemetry signals. Metrics aggregate numeric series over time. Traces contain per-request spans and parent-child timing. A Prometheus scrape does not collect OTLP traces.
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" annotate \
+  instance "$INSTANCE" \
+  "observability-demo-refresh=$(date +%s)" \
+  --overwrite
+```
 
-Repository behavior: `enableTracing` maps to `LLMInferenceService.spec.tracing`. `tracingEndpoint` sets `spec.tracing.exporterEndpoint`. The endpoint is used only while tracing is enabled.
+The next reconciliation created `inst-izu-metrics`:
+
+```bash
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get podmonitor
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get \
+  podmonitor inst-izu-metrics -o yaml
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get pods --show-labels
+```
+
+Its effective contract was:
+
+```yaml
+spec:
+  podMetricsEndpoints:
+    - interval: 30s
+      path: /metrics
+      targetPort: 8000
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: inst-izu
+      app.kubernetes.io/part-of: llminferenceservice
+      kserve.io/component: workload
+```
+
+Prometheus selected all `PodMonitor` labels and namespaces:
+
+```bash
+kubectl --context "$PROFILE" -n monitoring-demo get prometheus \
+  observability-kube-prometh-prometheus \
+  -o jsonpath='podMonitorSelector={.spec.podMonitorSelector}{" namespaceSelector="}{.spec.podMonitorNamespaceSelector}{"\n"}'
+```
+
+Verified output:
+
+```text
+podMonitorSelector={} namespaceSelector={}
+```
+
+### Verify Prometheus without Grafana
+
+Wait at least one 30-second `PodMonitor` interval, then query Prometheus through the Kubernetes API proxy:
+
+```bash
+kubectl --context "$PROFILE" get --raw \
+  '/api/v1/namespaces/monitoring-demo/services/http:observability-kube-prometh-prometheus:9090/proxy/api/v1/query?query=up%7Bnamespace%3D%22cert-manager%22%7D'
+
+kubectl --context "$PROFILE" get --raw \
+  '/api/v1/namespaces/monitoring-demo/services/http:observability-kube-prometh-prometheus:9090/proxy/api/v1/query?query=vllm%3Arequest_success_total'
+```
+
+Verified result:
+
+- The `cert-manager/inst-izu-metrics` target returned `up = 1`.
+- The scrape endpoint was the current vLLM Pod on port 8000.
+- Prometheus returned five `vllm:request_success_total` series.
+- The series carried `namespace`, `pod`, `model_name`, and `finished_reason` labels.
+
+Useful PromQL:
+
+```promql
+vllm:request_success_total
+```
+
+```promql
+sum(rate(vllm:generation_tokens_total[1m]))
+```
+
+```promql
+vllm:num_requests_running
+```
+
+```promql
+vllm:num_requests_waiting
+```
+
+```promql
+{__name__=~"vllm:(gpu|kv)_cache_usage_perc"}
+```
+
+```promql
+histogram_quantile(
+  0.95,
+  sum(rate(vllm:time_to_first_token_seconds_bucket[5m])) by (le)
+)
+```
+
+### Provision the vLLM dashboard
+
+The provider dashboard is provisioned through a labeled ConfigMap. This is preferable to a one-time API import because the Grafana sidecar restores it after a Pod replacement.
+
+```bash
+curl --fail --location \
+  --output /tmp/vllm-dashboard.json \
+  https://raw.githubusercontent.com/openeverest/provider-kserve/main/docs/dashboards/vllm.json
+
+kubectl --context "$PROFILE" -n monitoring-demo create configmap \
+  grafana-dashboard-vllm \
+  --from-file=vllm.json=/tmp/vllm-dashboard.json \
+  --dry-run=client -o yaml \
+  | kubectl label --local -f - grafana_dashboard=1 -o yaml \
+  | kubectl --context "$PROFILE" apply -f -
+
+kubectl --context "$PROFILE" -n monitoring-demo get \
+  configmap grafana-dashboard-vllm --show-labels
+```
+
+The provisioned dashboard UID is `provider-kserve-vllm`. Its panels cover token throughput, running and waiting requests, TTFT, inter-token latency, KV-cache use, end-to-end latency, successes, and preemptions.
+
+### Metrics-specific failure and fix
+
+| Observation | Cause | Fix | Proof |
+|---|---|---|---|
+| `PodMonitor` CRD was absent | provider-kserve does not install Prometheus Operator | Install kube-prometheus-stack | Both monitoring CRDs became available |
+| No `PodMonitor` appeared immediately after installation | The Instance had already reconciled while the CRD was absent | Update a harmless Instance annotation to trigger reconciliation | `inst-izu-metrics` was created |
+| A valid monitor could have been ignored | Prometheus selectors often require release labels or limit namespaces | Set empty PodMonitor label and namespace selectors | Target returned `up = 1` |
+| A one-time dashboard import would not survive replacement without persistent Grafana storage | The dashboard existed only in Grafana's runtime database | Provision it with a labeled ConfigMap | Grafana reported the dashboard as provisioned |
+
+## Verified OpenTelemetry and Tempo traces
+
+Metrics and traces are separate telemetry signals. Prometheus scrapes numeric series. Instrumented components export per-request spans over OTLP.
 
 ```mermaid
 flowchart LR
-    Req["inference request"] --> Parts["KServe gateway, scheduler, and model components"]
-    Parts -->|OTLP spans| Recv["OpenTelemetry Collector receiver"]
-    Recv --> Proc["processors, such as batching and sampling"]
-    Proc --> Exp["exporter"]
-    Exp --> Store["trace backend, such as Tempo or Jaeger"]
-    Store --> UI["backend UI or Grafana trace data source"]
+    Req["sampled chat request"] --> V["vLLM inference-server-decode"]
+    V -->|OTLP gRPC :4317| C["OpenTelemetry Collector in cert-manager"]
+    C -->|debug exporter| Logs["Collector verification logs"]
+    C -->|OTLP gRPC :4317| T["Tempo in monitoring-demo"]
+    G["Grafana"] -->|Tempo data source :3200| T
 ```
 
-An OpenTelemetry Collector and a trace backend are required. Neither component was verified in this lab.
+### Inspect KServe tracing configuration
 
-Unverified test plan:
-
-1. Inventory an approved Collector, its OTLP port, and its trace backend.
-2. Keep the Collector and backend small enough for the node CPU and memory budget.
-3. Enable `Observability > Distributed tracing (OTLP)` in the UI. Enter the Collector endpoint if the default is not valid.
-4. Alternatively, patch the Instance with the source-backed fields shown next.
-5. Wait for provider and KServe reconciliation.
-6. Inspect the generated `LLMInferenceService.spec.tracing`.
-7. Make sure that the Collector Service has ready endpoints.
-8. Send several distinct requests. KServe defaults can sample only part of the traffic.
-9. Prove Collector receipt with its logs or internal telemetry.
-10. Prove backend export by finding the same service or trace identity in the trace backend.
+The Instance already had tracing enabled:
 
 ```bash
-read -r -p 'OTLP exporter endpoint: ' OTEL_ENDPOINT
-TRACE_PATCH="$(jq -n --arg endpoint "$OTEL_ENDPOINT" '{
-  spec: {topology: {parameters: {
-    enableTracing: true,
-    tracingEndpoint: $endpoint
-  }}}
-}')"
-kubectl --context "$PROFILE" -n "$INSTANCE_NS" patch instance "$INSTANCE" \
-  --type=merge --patch "$TRACE_PATCH"
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get instance "$INSTANCE" \
+  -o jsonpath='{.spec.topology.parameters}{"\n"}'
+
 kubectl --context "$PROFILE" -n "$INSTANCE_NS" get \
   llminferenceservice.serving.kserve.io "$INSTANCE" \
   -o jsonpath='{.spec.tracing}{"\n"}'
 ```
 
-Inspect Collector reachability without assuming its name:
+The generated `spec.tracing` was `{}`, so KServe applied its defaults. Inspect the current model Pod environment:
 
 ```bash
-read -r -p 'Collector namespace: ' COLLECTOR_NS
-read -r -p 'Collector Service: ' COLLECTOR_SERVICE
-kubectl --context "$PROFILE" -n "$COLLECTOR_NS" get service "$COLLECTOR_SERVICE" -o yaml
-kubectl --context "$PROFILE" -n "$COLLECTOR_NS" get endpointslices.discovery.k8s.io \
-  -l "kubernetes.io/service-name=$COLLECTOR_SERVICE"
-kubectl --context "$PROFILE" -n "$COLLECTOR_NS" get pods
+POD="$(kubectl --context "$PROFILE" -n "$INSTANCE_NS" get pods \
+  -l "app.kubernetes.io/name=$INSTANCE,kserve.io/component=workload" \
+  -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}')"
+test -n "$POD"
+
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  printenv OTEL_EXPORTER_OTLP_ENDPOINT
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  printenv OTEL_SERVICE_NAME
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  printenv OTEL_TRACES_SAMPLER
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  printenv OTEL_TRACES_SAMPLER_ARG
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  printenv OTEL_RESOURCE_ATTRIBUTES
 ```
 
-A populated EndpointSlice proves that the Service has discovered endpoints. It does not prove OTLP acceptance or backend export.
+Verified values:
 
-Disable tracing after the test if the lab does not retain the Collector:
+```text
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+OTEL_SERVICE_NAME=inference-server-decode
+OTEL_TRACES_SAMPLER=parentbased_traceidratio
+OTEL_TRACES_SAMPLER_ARG=0.05
+```
+
+The resource attributes included:
+
+```text
+k8s.namespace.name=cert-manager
+llmisvc.name=inst-izu
+```
+
+The short endpoint name `otel-collector` resolves inside the model namespace. Deploying the Collector Service in `cert-manager` therefore satisfied the existing endpoint without changing the Instance or restarting the model.
+
+### Install Tempo
+
+The monolithic Tempo chart is sufficient for this one-node lab. It uses local ephemeral storage, so traces do not survive a Tempo Pod replacement.
+
+```bash
+helm repo add grafana-community \
+  https://grafana-community.github.io/helm-charts \
+  --force-update
+helm repo update
+
+cat >/tmp/tempo-values.yaml <<'EOF'
+replicas: 1
+
+tempo:
+  reportingEnabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 768Mi
+
+persistence:
+  enabled: false
+
+service:
+  type: ClusterIP
+EOF
+
+helm upgrade --install tempo grafana-community/tempo \
+  --version 3.2.1 \
+  --namespace monitoring-demo \
+  --values /tmp/tempo-values.yaml \
+  --wait \
+  --timeout 10m
+```
+
+Verify the query and OTLP ports:
+
+```bash
+kubectl --context "$PROFILE" -n monitoring-demo get pod tempo-0
+kubectl --context "$PROFILE" -n monitoring-demo get service tempo
+```
+
+The verified Service exposed Tempo HTTP query port 3200 and OTLP gRPC port 4317.
+
+### Install the OpenTelemetry Collector
+
+The Collector receives model spans over OTLP gRPC, writes a bounded verification summary to its logs, batches spans, and exports them to Tempo.
+
+```bash
+helm repo add open-telemetry \
+  https://open-telemetry.github.io/opentelemetry-helm-charts \
+  --force-update
+helm repo update
+
+cat >/tmp/otel-collector-values.yaml <<'EOF'
+mode: deployment
+fullnameOverride: otel-collector
+
+image:
+  repository: otel/opentelemetry-collector-k8s
+
+config:
+  exporters:
+    debug:
+      verbosity: normal
+    otlp_grpc/tempo:
+      endpoint: tempo.monitoring-demo.svc.cluster.local:4317
+      tls:
+        insecure: true
+
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  service:
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlp_grpc/tempo]
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+EOF
+
+helm upgrade --install otel-collector \
+  open-telemetry/opentelemetry-collector \
+  --version 0.177.0 \
+  --namespace "$INSTANCE_NS" \
+  --values /tmp/otel-collector-values.yaml \
+  --wait \
+  --timeout 10m
+```
+
+Verify the namespace-local endpoint:
+
+```bash
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get \
+  pod,service -l app.kubernetes.io/instance=otel-collector
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" get \
+  endpointslices.discovery.k8s.io \
+  -l kubernetes.io/service-name=otel-collector
+```
+
+A ready Collector Pod and a populated EndpointSlice prove network discovery. They do not prove span receipt or Tempo export.
+
+### Generate a deterministically sampled trace
+
+The default sampler records approximately 5 percent of unparented requests. A W3C `traceparent` header with the sampled flag set to `01` makes this verification deterministic under the parent-based sampler.
+
+```bash
+TRACE_ID="$(openssl rand -hex 16)"
+PARENT_SPAN_ID="$(openssl rand -hex 8)"
+
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" exec "$POD" -c main -- \
+  curl --fail-with-body --silent --show-error \
+  http://127.0.0.1:8000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -H "traceparent: 00-${TRACE_ID}-${PARENT_SPAN_ID}-01" \
+  --data '{
+    "model": "qwen3-0.6b",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Reply with exactly: trace works"
+      }
+    ],
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    },
+    "temperature": 0,
+    "max_tokens": 16
+  }'
+
+printf 'Trace ID: %s\n' "$TRACE_ID"
+```
+
+The verified request returned `trace works`.
+
+### Prove Collector receipt and export
+
+Inspect the Collector:
+
+```bash
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" logs \
+  deployment/otel-collector \
+  --since=5m \
+  | grep -F 'llm_request'
+
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" logs \
+  deployment/otel-collector \
+  --since=5m \
+  | grep -F 'otelcol_exporter_sent_spans'
+```
+
+Verified span attributes included:
+
+```text
+service.name=inference-server-decode
+llmisvc.name=inst-izu
+gen_ai.usage.prompt_tokens=18
+gen_ai.usage.completion_tokens=3
+gen_ai.latency.time_to_first_token=0.15580511093139648
+gen_ai.latency.e2e=0.22567963600158691
+gen_ai.request.id=chatcmpl-96f32a075cf561de
+```
+
+Collector internal telemetry proved:
+
+```text
+otelcol_receiver_accepted_spans{receiver=otlp,transport=grpc} 1
+otelcol_receiver_failed_spans{receiver=otlp,transport=grpc} 0
+otelcol_exporter_sent_spans{exporter=otlp_grpc/tempo,...} 1
+```
+
+Query Tempo directly through the Kubernetes API proxy:
+
+```bash
+kubectl --context "$PROFILE" get --raw \
+  "/api/v1/namespaces/monitoring-demo/services/http:tempo:3200/proxy/api/traces/$TRACE_ID"
+```
+
+A returned trace proves backend storage. Collector logs alone prove receipt, not storage.
+
+### Provision the Tempo data source
+
+Provision Tempo through the Grafana datasource sidecar so the configuration survives Grafana Pod replacement:
+
+```bash
+cat >/tmp/grafana-datasource-tempo.yaml <<'EOF'
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-tempo
+  namespace: monitoring-demo
+  labels:
+    grafana_datasource: "1"
+data:
+  tempo.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Tempo
+        uid: tempo
+        type: tempo
+        access: proxy
+        url: http://tempo.monitoring-demo.svc.cluster.local:3200
+        isDefault: false
+        editable: true
+        jsonData:
+          httpMethod: GET
+          nodeGraph:
+            enabled: true
+          serviceMap:
+            datasourceUid: prometheus
+          tracesToMetrics:
+            datasourceUid: prometheus
+EOF
+
+kubectl --context "$PROFILE" apply \
+  -f /tmp/grafana-datasource-tempo.yaml
+kubectl --context "$PROFILE" -n monitoring-demo get \
+  configmap grafana-datasource-tempo --show-labels
+```
+
+The verified Grafana datasource health response was:
+
+```text
+status=OK
+message=Data source is working
+```
+
+Grafana then retrieved the sampled trace through the Tempo datasource. This proves the complete model to Collector to Tempo to Grafana path.
+
+### Trace-specific failure and fix
+
+| Observation | Cause | Fix | Proof |
+|---|---|---|---|
+| Tracing was enabled but no trace backend existed | KServe injected an OTLP endpoint, but no `otel-collector` Service resolved in the model namespace | Install the Collector with `fullnameOverride: otel-collector` in `cert-manager` | Collector received the sampled `llm_request` span |
+| Collector receipt alone did not provide trace search or retention | The debug exporter only writes verification logs | Install monolithic Tempo and add an OTLP gRPC exporter | Collector reported one span exported to Tempo |
+| The first exporter name produced a deprecation warning | Collector `0.163.2` renamed exporter type `otlp` to `otlp_grpc` | Use `otlp_grpc/tempo` in the final values | Helm upgrade completed without the exporter rename warning |
+| API-created Grafana resources would not survive Pod replacement without persistent storage | Dashboard and datasource state existed only in the runtime database | Provision both through labeled ConfigMaps | Grafana marked the dashboard as provisioned and reported Tempo healthy |
+
+### Final verified observability state
+
+```text
+vLLM metrics:
+  vLLM /metrics
+    -> inst-izu-metrics PodMonitor
+    -> Prometheus
+    -> Grafana vLLM dashboard
+
+vLLM traces:
+  inference-server-decode
+    -> OTLP gRPC
+    -> otel-collector
+    -> Tempo
+    -> Grafana Tempo data source
+```
+
+Final health evidence:
+
+- Grafana database health: `ok`.
+- Prometheus vLLM target: `up`.
+- Prometheus vLLM request series: five.
+- Tempo datasource health: `OK`.
+- Sampled request response: `trace works`.
+- Collector accepted spans: one.
+- Collector failed spans: zero.
+- Collector exported spans to Tempo: one.
+- Tempo returned the exact trace.
+- Grafana retrieved the exact trace from Tempo.
+- Prometheus, Grafana, Tempo, and Collector Pods were `Running` with zero restarts after the final configuration.
+
+### Optional cleanup
+
+Disable tracing before removing the Collector if the lab no longer retains the trace stack:
 
 ```bash
 kubectl --context "$PROFILE" -n "$INSTANCE_NS" patch instance "$INSTANCE" \
   --type=merge \
   --patch '{"spec":{"topology":{"parameters":{"enableTracing":false,"tracingEndpoint":null}}}}'
+
+helm --kube-context "$PROFILE" uninstall otel-collector \
+  --namespace "$INSTANCE_NS"
+helm --kube-context "$PROFILE" uninstall tempo \
+  --namespace monitoring-demo
+kubectl --context "$PROFILE" -n monitoring-demo delete \
+  configmap grafana-datasource-tempo
+```
+
+Remove the full metrics stack only when it is not shared with another workload:
+
+```bash
+helm --kube-context "$PROFILE" uninstall observability \
+  --namespace monitoring-demo
+kubectl --context "$PROFILE" delete namespace monitoring-demo
 ```
 
 ## Workshop Q&A
@@ -536,6 +1037,11 @@ Official upstream sources:
 - [vLLM automatic prefix caching](https://docs.vllm.ai/en/v0.26.0/features/automatic_prefix_caching/)
 - [OpenTelemetry signals](https://opentelemetry.io/docs/concepts/signals/)
 - [OpenTelemetry Collector components](https://opentelemetry.io/docs/collector/components/)
+- [kube-prometheus-stack chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)
+- [OpenTelemetry Collector Helm chart](https://opentelemetry.io/docs/platforms/kubernetes/helm/collector/)
+- [OpenTelemetry Collector configuration](https://opentelemetry.io/docs/collector/configuration/)
+- [Grafana Tempo Helm chart](https://grafana.com/docs/tempo/latest/setup/helm-chart/)
+- [Grafana Tempo data source](https://grafana.com/docs/grafana/latest/datasources/tempo/)
 - [Gateway API overview](https://gateway-api.sigs.k8s.io/docs/concepts/api-overview/)
 - [Envoy AI Gateway API](https://aigateway.envoyproxy.io/docs/latest/api/)
 - [cert-manager Gateway usage](https://cert-manager.io/docs/usage/gateway/)
