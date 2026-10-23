@@ -318,6 +318,51 @@ The lab finished with:
 
 For a clean demonstration, create the final Instance in `default` or a dedicated model namespace. The working `cert-manager` deployment should remain intact until that clean Instance passes the same readiness and inference gates.
 
+## Subsequent metrics and namespace observations
+
+The vLLM metrics endpoint later reported:
+
+```text
+vllm:request_success_total{finished_reason="stop"} 1
+vllm:request_success_total{finished_reason="length"} 0
+vllm:request_success_total{finished_reason="abort"} 0
+vllm:request_success_total{finished_reason="error"} 0
+vllm:request_success_total{finished_reason="repetition"} 0
+```
+
+This proves that vLLM recorded one normally stopped request and no length-limited, aborted, errored, or repetition-terminated requests at that snapshot.
+
+Before the first long-prefix request, prefix-cache counters were:
+
+```text
+queries: 29
+hits: 0
+```
+
+After one request with 987 prompt tokens, they were:
+
+```text
+queries: 1016
+hits: 0
+```
+
+The query increase was 987, matching the reported prompt-token count. Zero hits were expected because that long prefix had only been submitted once. The first request populated reusable blocks. A second identical request was still required to prove reuse.
+
+The request output was not captured because the redirection was entered on a separate shell line. A redirection such as `>/tmp/prefix-second.json` must be part of the same `curl` command.
+
+A later `kubectl exec deployment/inst-izu-kserve` returned `NotFound`. This means that Deployment was no longer present in the selected namespace. The likely causes were deletion of `inst-izu` while releasing the single GPU or a stale `$NS` value. It was not a vLLM or NVIDIA error.
+
+Namespace queries also treated cluster names as namespace names. In this lab:
+
+- `everest-gpu` is the Minikube profile, kubeconfig context, cluster, and node name.
+- `everest-system` is the OpenEverest control-plane namespace.
+- `provider-kserve` is the provider and KServe control-plane namespace.
+- `cert-manager` is certificate infrastructure and was also the accidental location of the first model.
+- `default` was intended for the clean UI-created model.
+- The existence of `everest-monitoring` does not prove Prometheus or Grafana is running.
+
+Use `kubectl get pods --all-namespaces -o wide` before naming the current Pods. The later command output did not include a complete live Pod inventory.
+
 ## Demo and talk implications
 
 The lab produced several useful examples:

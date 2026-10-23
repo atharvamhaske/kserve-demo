@@ -38,9 +38,146 @@ Verified outcomes:
 | [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md) | Full copy-paste setup, deployment, UI, inference, and recording procedure |
 | [Lab findings and troubleshooting](docs/wsl-gpu-lab-findings.md) | Environment, every observed failure, root causes, fixes, and final evidence |
 | [Workshop FAQ](docs/wsl-gpu-workshop-faq.md) | Architecture, 58 audience questions, skeptical questions, demo boundaries, and fallback answers |
+| [Kubernetes and vLLM observability](docs/kubernetes-and-vllm-observability.md) | Namespace, Pod, controller, CRD, request-flow, metrics, Grafana, and OpenTelemetry revision guide |
 | [Local Envoy AI Gateway rehearsal](docs/envoy-ai-gateway-rehearsal.md) | Unverified local routing, authentication, 401, and 403 exercise |
 
 Start with the [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md). Use the findings when a step fails. Read the FAQ before presenting.
+
+## Cluster mental model
+
+The laboratory contains several nested systems. Names from one layer do not automatically exist in another.
+
+```text
+Mac
+  browser, curl, and SSH client
+  -> Windows workstation
+     OpenSSH server
+     -> WSL 2 Ubuntu
+        Docker Engine
+        -> Minikube node container named everest-gpu
+           Kubernetes cluster and context named everest-gpu
+           -> Kubernetes namespaces
+              -> controllers, model workloads, and Services
+```
+
+`everest-gpu` is the Minikube profile, kubeconfig context, cluster, and node name in this lab. It is not an application namespace.
+
+Use these commands to distinguish the layers:
+
+```bash
+minikube profile list
+kubectl config current-context
+kubectl get nodes
+kubectl get namespaces
+kubectl get pods --all-namespaces -o wide
+```
+
+## Namespace map
+
+These namespaces existed in the observed cluster. The table states their intended role. Always use `kubectl get pods --all-namespaces` for the live inventory.
+
+| Namespace | Intended role | Typical contents |
+|---|---|---|
+| `cert-manager` | Certificate and webhook support | cert-manager controller, cainjector, and webhook |
+| `default` | General workloads when no dedicated namespace is chosen | Intended home for the clean `qwen-demo` Instance; confirm live workloads with `kubectl get pods -A` |
+| `everest-monitoring` | OpenEverest monitoring integration namespace | Its existence alone does not prove Prometheus or Grafana is installed |
+| `everest-system` | OpenEverest control plane and UI | OpenEverest server, controllers, and supporting Services |
+| `kube-node-lease` | Kubernetes node heartbeat leases | Lease objects, normally no application Pods |
+| `kube-public` | Publicly readable cluster metadata | ConfigMaps, normally no application Pods |
+| `kube-system` | Kubernetes and Minikube system components | DNS, control-plane static Pods, storage support, Metrics Server when enabled, and GPU device integration |
+| `provider-kserve` | provider-kserve and bundled operator control plane | provider controller, KServe controllers and webhooks, plus optional gateway controllers |
+
+The first working model was accidentally created in `cert-manager`. That was technically possible because Instances are namespaced, but it mixed an application workload with certificate infrastructure. Use `default` or a dedicated namespace such as `llm-demo` for the final demonstration.
+
+## Control-plane ownership
+
+```text
+OpenEverest UI or kubectl
+  -> Instance
+     watched by provider-kserve
+  -> LLMInferenceService and optional LLMInferenceServiceConfig
+     watched by KServe LLM controllers
+  -> Deployment or LeaderWorkerSet, Pod, Service, and optional InferencePool
+     managed by Kubernetes and KServe
+  -> status flows back through provider-kserve
+  -> Instance status appears in OpenEverest
+```
+
+The controllers are not in the direct inference request path. They continuously reconcile desired state.
+
+## Important resource types
+
+| Resource | API owner | Purpose |
+|---|---|---|
+| `Provider` | OpenEverest | Registers provider-kserve schemas, versions, UI fields, and capabilities |
+| `Instance` | OpenEverest | User-facing desired state and connection status |
+| `InstancePreset` | OpenEverest | Reusable UI and deployment defaults |
+| `LLMInferenceService` | KServe | Desired vLLM model-serving topology |
+| `LLMInferenceServiceConfig` | KServe | Composable runtime and Pod configuration |
+| `InferenceService` | KServe | Predictive or custom-container serving topology |
+| `ClusterServingRuntime` | KServe | Available model-server runtime definitions |
+| `ClusterStorageContainer` | KServe | Model downloader selected by URI scheme |
+| `PodMonitor` | Prometheus Operator | Tells Prometheus how to scrape model Pods |
+| `Gateway`, `AIGatewayRoute`, and `SecurityPolicy` | Optional Gateway controllers | Shared routing and API-key policy |
+| `Certificate` and `Issuer` | cert-manager | Optional TLS certificate lifecycle |
+| `LeaderWorkerSet` | Optional LWS controller | Multi-node model layouts |
+
+`Deployment`, `ReplicaSet`, `Pod`, `Service`, `Secret`, and `ConfigMap` are native Kubernetes resources, not CRDs.
+
+List the installed CRDs:
+
+```bash
+kubectl get customresourcedefinitions
+```
+
+List the important live objects:
+
+```bash
+kubectl get provider
+kubectl get instance --all-namespaces
+kubectl get llminferenceservice --all-namespaces
+kubectl get deployment,pod,service --all-namespaces
+```
+
+## Request, metric, and trace flows
+
+Direct request path verified in the lab:
+
+```text
+curl
+  -> SSH and kubectl port-forwards
+  -> KServe workload Service
+  -> vLLM Pod
+  -> NVIDIA GPU
+```
+
+Prometheus metric path:
+
+```text
+vLLM Pod :8000/metrics
+  <- selected by PodMonitor
+  <- scraped by Prometheus
+  <- queried by Grafana
+```
+
+OpenTelemetry trace path:
+
+```text
+instrumented KServe and model components
+  -> OTLP exporter
+  -> OpenTelemetry Collector
+  -> trace backend such as Tempo or Jaeger
+  -> Grafana or trace UI
+```
+
+Metrics and traces are different:
+
+- Metrics are numeric time series such as queue depth, token counts, latency histograms, and KV-cache utilization.
+- Traces connect spans from one request across instrumented components.
+- A `PodMonitor` does not collect traces.
+- An OpenTelemetry Collector does not create the provider's Prometheus metrics.
+
+See [Kubernetes and vLLM observability](docs/kubernetes-and-vllm-observability.md) for the complete Pod, namespace, CRD, metrics, Grafana, and OTLP revision guide.
 
 ## Observed GPU host
 
