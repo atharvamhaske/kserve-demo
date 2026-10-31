@@ -6,6 +6,8 @@ A reproducible workshop for serving Qwen3 0.6B on an NVIDIA GPU with OpenEverest
 
 Start with the [UI-first workshop module](docs/open-source-hub-workshop/README.md).
 
+Before presenting, read the [model creation and parallelism guide](docs/open-source-hub-workshop/model-configuration-guide.md). It explains preset cards, manual UI fields, Instance YAML, and every scaling method.
+
 It contains one script entry point, pinned Helm values, Kubernetes manifests, every UI selector, a Go client, recovery, and cleanup.
 
 The current path uses provider-kserve 0.5.0 on native Ubuntu. It exposes Qwen3 0.6B through HTTPS and creates one API key per application.
@@ -25,13 +27,14 @@ Create `qwen-demo` from the `kserve-qwen-demo-gateway` preset. Create `chat-app`
 
 ```text
 docs/open-source-hub-workshop/
-├── README.md                 # UI-first runbook and speaker flow
-├── release-sources.md        # Release and API evidence
-├── scripts/                  # One operator entry point and staged commands
-├── config/                   # Pinned workshop versions
-├── values/                   # Provider and monitoring Helm values
-├── manifests/                # Valkey, preset, Instance, and Secret examples
-└── clients/go/               # OpenAI-compatible Go consumer
+├── README.md                      # UI-first runbook and speaker flow
+├── model-configuration-guide.md  # Preset, YAML, parallelism, and attendee answers
+├── release-sources.md            # Release and API evidence
+├── scripts/README.md             # Operator entry point and staged commands
+├── config/README.md              # Pinned workshop versions and names
+├── values/README.md              # Provider and monitoring Helm values
+├── manifests/README.md           # Preset, Instance, user, and TLS manifests
+└── clients/README.md             # Curl and Go client contract
 ```
 
 The public page and screenshot guide are in `docs/one-click-llm-deployment-*`.
@@ -69,6 +72,7 @@ Verified outcomes:
 |---|---|
 | [All-in-one Open Source Hub runbook](docs/open-source-hub-workshop/README.md) | Current native Ubuntu setup, UI deployment, API, metrics, speaker cues, recovery, and cleanup |
 | [Workshop release sources](docs/open-source-hub-workshop/release-sources.md) | Official version and compatibility evidence |
+| [Model creation and parallelism guide](docs/open-source-hub-workshop/model-configuration-guide.md) | Presenter choice, preset versus YAML, GPU planning, and attendee questions |
 | [Public workshop page](docs/one-click-llm-deployment-workshop.md) | Event summary, architecture, schedule, and proof |
 | [Screenshot guide](docs/one-click-llm-deployment-screenshot-guide.md) | Exact capture points and file names |
 | [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md) | Earlier verified WSL setup, deployment, UI, inference, and recording procedure |

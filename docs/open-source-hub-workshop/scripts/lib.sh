@@ -36,6 +36,7 @@ kube() {
 
 require_fixed_namespaces() {
   [[ $EVEREST_NS == everest-system ]] || fail 'EVEREST_NS must be everest-system for the checked-in manifests'
+  [[ $INSTANCE_NS == default ]] || fail 'INSTANCE_NS must be default for the checked-in manifests and runbook'
   [[ $MONITORING_NS == monitoring-demo ]] || fail 'MONITORING_NS must be monitoring-demo for the checked-in Helm values'
 }
 

@@ -58,16 +58,18 @@ Select `kserve-qwen-demo-gateway`. Show Namespace `default`, Display name `qwen-
 
 Save as `03-workshop-preset.png`.
 
-## Capture 4: manual Routing selectors
+## Capture 4: manual configuration explanation
 
 Open a second unsaved Start from scratch form. Select Configure more options.
 
-Capture only the Routing section:
+Show the Scaling & Parallelism section first. Explain that tensor, pipeline, and data sizes stay at `1` because the model fits one GPU. The demo keeps replicas at `1` because it needs one model copy.
+
+Scroll to Routing and capture:
 
 - External access: Envoy AI Gateway
 - Tokens per User per Hour: 300
 
-Do not submit this second form.
+Do not submit this second form. It explains the custom UI path without creating a competing `qwen-demo` Instance.
 
 Save as `04-routing-selectors.png`.
 

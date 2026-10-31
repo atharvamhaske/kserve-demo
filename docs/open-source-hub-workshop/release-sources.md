@@ -15,6 +15,7 @@ Use this set for the current workshop:
 | Envoy AI Gateway / Agent Router | `v1.2.0` | Bundled `ai-gateway-helm` and `ai-gateway-crds-helm` dependencies | provider-kserve 0.5.0 pins this version and keeps the Envoy AI Gateway resource names. |
 | Gateway API | `v1.6` | CRDs from the Envoy Gateway `v1.9.2` chart | cert-manager Gateway support requires these CRDs before cert-manager starts. |
 | KServe | `0.21.0` | KServe charts `kserve-crd`, `kserve-llmisvc-crd`, `kserve-resources`, `kserve-llmisvc-resources`, and `kserve-runtime-configs`, all at `v0.21.0` | This is the KServe version required by provider 0.5.x. The provider chart installs the KServe CRDs and controllers, so the workshop must not install a second KServe release. |
+| vLLM | `0.26.0` | `ghcr.io/llm-d/llm-d-cuda:v0.9.0` | This is the vLLM version in the provider 0.5.0 default version bundle and bundled GPU presets. |
 | Kubernetes | `v1.36.6` | Minikube `--kubernetes-version=v1.36.6` | Kubernetes `v1.37.1` is the newest stable release, but provider 0.5.x supports only Kubernetes 1.30 through 1.36. `v1.36.6` is the newest patch in the newest compatible minor. |
 | Minikube | `v1.39.0` | `minikube-linux-amd64` | This is the latest stable Minikube release. It supports Kubernetes 1.36 and 1.37, but its default is 1.37, so the workshop must pass the Kubernetes pin explicitly. |
 | cert-manager | `v1.21.3` | `jetstack/cert-manager` | This is the latest stable release. Install it separately before provider-kserve so the admission webhook is ready. |
@@ -22,7 +23,7 @@ Use this set for the current workshop:
 | Prometheus | `v3.15.1` | `quay.io/prometheus/prometheus:v3.15.1-distroless` | This is the image pinned by kube-prometheus-stack 92.16.1 and the latest stable Prometheus release. `v3.16.0-rc.2` is a preview and must not replace it. |
 | Grafana | `13.3.0` | Grafana dependency chart `14.2.0`, image `docker.io/grafana/grafana:13.3.0-distroless` | kube-prometheus-stack 92.16.1 pins Grafana chart 14.2.0, whose `appVersion` is 13.3.0. This matches the latest stable Grafana release. |
 | Valkey | `9.1.3` | `valkey/valkey:9.1.3-alpine` | This is the latest stable Valkey release. The workshop uses one disposable instance for token-quota counters. |
-| OpenAI Go client | `v3.91.0` | `github.com/openai/openai-go/v3` | This is the latest non-prerelease client. It requires Go 1.26 or later. |
+| OpenAI Go client | `v3.91.0` | `github.com/openai/openai-go/v3` | This is the latest non-prerelease client. It requires Go 1.26 or newer. |
 
 Install cert-manager before provider-kserve. A separate release avoids the same-release admission webhook race documented by provider-kserve.
 
@@ -107,6 +108,81 @@ The complete historical set is therefore OpenEverest `2.0.0-dev.2`, provider-kse
 
 Provider 0.1.0 artifacts are `oci://ghcr.io/openeverest/charts/provider-kserve --version 0.1.0`, `provider-kserve-0.1.0.tgz`, and `ghcr.io/openeverest/provider-kserve:0.1.0`. Its chart pins the KServe `v0.20.0` CRD, controller, and runtime-config charts.
 
+## Workshop configuration choices and vLLM parallelism
+
+This section separates an OpenEverest creation method from the runtime layout that the resulting `Instance` requests. It applies to the workshop pins: OpenEverest `2.0.0-dev.4`, provider-kserve `0.5.0`, and KServe `0.21.0`.
+
+### What an InstancePreset does
+
+An `InstancePreset` is a reusable, ready-to-deploy instance configuration. Its spec has the same shape as `Instance.spec`, including the provider, version, topology, components, storage, and scheduling.
+
+The official [Instance preset guide](https://openeverest.io/documentation/2.0.0-dev.4/administer/instance_presets.html#the-instancepreset-resource) documents that full-spec shape. The API is even more direct: [`InstancePresetSpec` embeds `InstanceSpec`](https://github.com/openeverest/openeverest/blob/v2.0.0-dev.4/api/core/v1alpha1/instancepreset_types.go#L21-L24).
+
+In the UI, selecting a card resolves the preset for the target namespace. OpenEverest fills namespace defaults, populates the form, locks the preset-owned configuration, and submits the resolved spec as-is.
+
+The [official UI procedure](https://openeverest.io/documentation/2.0.0-dev.4/administer/instance_presets.html#using-presets-in-the-ui) describes that flow. The UI implementation is source evidence: [`buildPresetCreateArgs` assigns the resolved spec and provenance annotation](https://github.com/openeverest/openeverest/blob/v2.0.0-dev.4/ui/apps/everest/src/pages/database-form/preset-selection/preset-selection.utils.ts#L51-L55).
+
+The resulting object is a normal `Instance` with a full `spec`, not an object that depends on a `presetRef` at runtime. [`InstanceSpec` has the normal provider, topology, parameter, and component fields and no `presetRef`](https://github.com/openeverest/openeverest/blob/v2.0.0-dev.4/api/core/v1alpha1/instance_types.go#L34-L132). The annotation records provenance only.
+
+### Workshop decision rule
+
+Use these three paths deliberately:
+
+- Live demo: select the checked-in [`kserve-qwen-demo-gateway` preset](manifests/instancepreset-qwen-demo-gateway.yaml). It keeps the provider's 1-GPU layout and adds the Gateway, quota, and metrics required by this workshop.
+- One-off exploration: start without a preset and change the UI custom fields. The preset flow in this OpenEverest release is pick-and-use, while [creation from scratch remains available](https://openeverest.io/documentation/2.0.0-dev.4/administer/instance_presets.html#limitations).
+- Repeatable automation or review: check in an `Instance` manifest. The provider ships an [official Instance YAML example](https://github.com/openeverest/provider-kserve/blob/v0.5.0/examples/instance-llm.yaml). Git then records the exact desired spec and its review history.
+
+This is a workshop policy, not an OpenEverest API requirement.
+
+### provider-kserve 0.5.0 field contract
+
+| Instance field | Meaning, default, and validation in provider-kserve `0.5.0` |
+|---|---|
+| `spec.components.llmEngine.parameters.tensorParallelSize` | Maps to vLLM tensor parallel size. The UI default is `1` and its allowed range is 1 to 16. The provider requires every GPU model pod to have at least this many GPUs. |
+| `spec.components.llmEngine.parameters.pipelineParallelSize` | Maps to vLLM pipeline parallel size. The UI default is `1` and its allowed range is 1 to 16. With `workerCount`, it must equal `workerCount + 1`; the flag alone does not create worker pods. |
+| `spec.components.llmEngine.parameters.dataParallelSize` | Maps to KServe data parallelism. The UI default is `1` and its allowed range is 1 to 16. Values greater than `1` map to both `parallelism.data` and `dataLocal`; `1` is treated as no-op. Data and pipeline sizes cannot both exceed `1`. |
+| `spec.components.llmEngine.replicas` | Fixed KServe workload copies. The topology and UI default to `1`; the UI range is 0 to 32, and provider validation rejects negative values. When WVA autoscaling fields are set, the provider emits `scaling` instead of fixed `replicas`. |
+| `spec.components.llmEngine.parameters.gpuCount` | The `nvidia.com/gpu` limit for each vLLM head and worker pod. On the GPU profile, an empty value preserves an existing GPU limit or defaults it to `1`. The UI range is 1 to 16. It is invalid on the CPU profile and must be at least `tensorParallelSize`. |
+
+Provider source evidence for the table:
+
+- The [topology default](https://github.com/openeverest/provider-kserve/blob/v0.5.0/definition/topologies/llm/topology.yaml#L13-L17) sets one replica. The [LLM UI schema](https://github.com/openeverest/provider-kserve/blob/v0.5.0/definition/topologies/llm/topology.yaml#L84-L196) defines replica and parallelism fields, defaults, and ranges. Its [GPU field](https://github.com/openeverest/provider-kserve/blob/v0.5.0/definition/topologies/llm/topology.yaml#L275-L294) documents the effective 1-GPU default and the 1 to 16 UI range.
+- The [component type definitions](https://github.com/openeverest/provider-kserve/blob/v0.5.0/definition/components/types.go#L94-L130) map the three parallel sizes and `gpuCount` to vLLM and KServe.
+- The [provider validation](https://github.com/openeverest/provider-kserve/blob/v0.5.0/internal/provider/llminferenceservice.go#L97-L99) rejects simultaneous data and pipeline sizes greater than `1`. Its [GPU checks](https://github.com/openeverest/provider-kserve/blob/v0.5.0/internal/provider/llminferenceservice.go#L186-L193) apply to head and worker resources.
+- The [`gpuCount` implementation](https://github.com/openeverest/provider-kserve/blob/v0.5.0/internal/provider/llminferenceservice.go#L288-L330) injects the GPU limit, supplies the effective default of `1`, and requires at least the tensor parallel size.
+- The [KServe mapping](https://github.com/openeverest/provider-kserve/blob/v0.5.0/internal/provider/llminferenceservice.go#L638-L668) sends fixed replicas, tensor and pipeline sizes, and data sizes. It mirrors `dataParallelSize` into `dataLocal` and omits data parallelism when the value is `1`.
+- KServe `0.21.0` defines [`replicas` as deployment replicas](https://github.com/kserve/kserve/blob/v0.21.0/pkg/apis/serving/v1alpha2/llm_inference_service_types.go#L116-L154) and gives each [parallelism size a minimum of `1`](https://github.com/kserve/kserve/blob/v0.21.0/pkg/apis/serving/v1alpha2/llm_inference_service_types.go#L733-L758).
+
+### What the parallelism settings mean
+
+Tensor parallelism splits one model replica across GPUs. Use it when a model needs several GPUs in one node.
+
+Pipeline parallelism splits one model replica into model stages. For multi-node models, vLLM recommends tensor size equal to GPUs per node. Pipeline size equals node count.
+
+Pipeline parallelism is also the documented option when a model fits on one node but its size does not divide evenly across the GPU count. It splits by layers and supports uneven splits.
+
+Those rules come from vLLM `0.26.0` [single-model replica guidance](https://docs.vllm.ai/en/v0.26.0/serving/parallelism_scaling/#distributed-inference-strategies-for-a-single-model-replica). The same guide covers [uneven GPU splits](https://docs.vllm.ai/en/v0.26.0/serving/parallelism_scaling/#edge-case-uneven-gpu-splits).
+
+Data parallelism replicates model weights across separate instances or GPUs so they can process different request batches. In vLLM, each data-parallel rank is a separate core-engine process with its own KV cache.
+
+Requests still need routing across those engines. vLLM supports internal, hybrid, and external balancing. For external balancing of dense models, each server is fully independent and runs without `--data-parallel-*` flags.
+
+The official vLLM `0.26.0` [data parallel guide](https://docs.vllm.ai/en/v0.26.0/serving/data_parallel_deployment/#data-parallel-deployment) defines the engine and memory model. Its [external balancing section](https://docs.vllm.ai/en/v0.26.0/serving/data_parallel_deployment/#external-load-balancing) defines the independent-server layout.
+
+`replicas` is outside vLLM's in-engine parallelism. KServe creates that many workload copies, and provider-kserve passes the fixed count to KServe. Each copy runs another model server, so budget model-weight and KV-cache memory for every replica.
+
+Do not treat data parallel size and Kubernetes replicas as synonyms. Data parallel size controls vLLM/KServe engine ranks inside the generated service. Replicas controls KServe workload copies around that layout.
+
+### Capacity caveats for the presenter
+
+- provider-kserve validates `gpuCount >= tensorParallelSize`. This is only the API floor, not the complete local runtime demand.
+- Without worker pods, local pipeline parallelism needs `tensorParallelSize x pipelineParallelSize` GPUs in the head pod.
+- With worker pods, each head and worker needs at least `tensorParallelSize` GPUs. An explicit `workerResources` GPU limit can differ from the head limit.
+- Multi-node worker pods require LeaderWorkerSet. The chart [leaves it disabled](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/values.yaml#L660-L663) and pins the controller to [`0.8.0`](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/Chart.yaml#L75-L80).
+- Local data parallelism needs `tensorParallelSize x dataParallelSize` GPUs in the head pod and a request-balancing path.
+- Kubernetes replicas are full outer workload copies. Each replica needs another set of model weights and KV caches in accelerator memory.
+- Keep the live workshop at the charted 1-GPU preset. Change parallelism only when the cluster has the matching GPUs, nodes, model fit, and routing.
+
 ## Primary sources
 
 - OpenEverest stable `v1.17.0`: [release](https://github.com/openeverest/openeverest/releases/tag/v1.17.0).
@@ -114,14 +190,18 @@ Provider 0.1.0 artifacts are `oci://ghcr.io/openeverest/charts/provider-kserve -
 - OpenEverest Developer Preview 2: [release](https://github.com/openeverest/openeverest/releases/tag/v2.0.0-dev.2).
 - OpenEverest chart asset: [release](https://github.com/openeverest/helm-charts/releases/tag/openeverest-2.0.0-dev.4).
 - OpenEverest official Helm index: [index](https://openeverest.github.io/helm-charts/index.yaml).
-- provider-kserve `v0.5.0`: [release](https://github.com/openeverest/provider-kserve/releases/tag/v0.5.0).
-- provider-kserve compatibility and warning: [README](https://github.com/openeverest/provider-kserve/blob/v0.5.0/README.md#compatibility).
-- provider-kserve AI Gateway setup: [guide](https://github.com/openeverest/provider-kserve/blob/v0.5.0/docs/ai-gateway-setup.md).
-- provider-kserve TLS and `nip.io`: [guide](https://github.com/openeverest/provider-kserve/blob/v0.5.0/docs/ai-gateway-tls.md).
-- provider-kserve chart dependencies: [chart](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/Chart.yaml).
-- provider-kserve UI fields and presets: [values](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/values.yaml).
-- plugin-user-management `v0.2.0`: [release](https://github.com/openeverest/plugin-user-management/releases/tag/v0.2.0).
-- plugin-user-management API-key contract: [README](https://github.com/openeverest/plugin-user-management/blob/v0.2.0/README.md).
+- Provider `v0.5.0` release: [release](https://github.com/openeverest/provider-kserve/releases/tag/v0.5.0).
+- Provider compatibility and warning: [README](https://github.com/openeverest/provider-kserve/blob/v0.5.0/README.md#compatibility).
+- Provider AI Gateway setup: [guide](https://github.com/openeverest/provider-kserve/blob/v0.5.0/docs/ai-gateway-setup.md).
+- Provider TLS and `nip.io`: [guide](https://github.com/openeverest/provider-kserve/blob/v0.5.0/docs/ai-gateway-tls.md).
+- Provider chart dependencies: [chart](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/Chart.yaml).
+- Provider UI fields and presets: [values](https://github.com/openeverest/provider-kserve/blob/v0.5.0/charts/provider-kserve/values.yaml).
+- Provider version bundle and vLLM image: [README](https://github.com/openeverest/provider-kserve/blob/v0.5.0/README.md#versions).
+- Provider multi-node and replica guidance: [guide](https://github.com/openeverest/provider-kserve/blob/v0.5.0/docs/llm-multi-node.md).
+- Official vLLM `0.26.0` parallelism and scaling: [guide](https://docs.vllm.ai/en/v0.26.0/serving/parallelism_scaling/).
+- Official vLLM `0.26.0` data parallel deployment: [guide](https://docs.vllm.ai/en/v0.26.0/serving/data_parallel_deployment/).
+- Plugin User Management `v0.2.0`: [release](https://github.com/openeverest/plugin-user-management/releases/tag/v0.2.0).
+- Plugin User Management API-key contract: [README](https://github.com/openeverest/plugin-user-management/blob/v0.2.0/README.md).
 - OpenEverest preset UI: [source](https://github.com/openeverest/openeverest/blob/v2.0.0-dev.4/ui/apps/everest/src/pages/database-form/preset-selection/preset-select-cards/preset-select-cards.messages.ts).
 - provider-kserve `v0.1.0`: [release](https://github.com/openeverest/provider-kserve/releases/tag/v0.1.0).
 - provider-kserve `v0.1.0` KServe pins: [chart](https://github.com/openeverest/provider-kserve/blob/v0.1.0/charts/provider-kserve/Chart.yaml).
