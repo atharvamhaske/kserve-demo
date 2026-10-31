@@ -229,6 +229,7 @@ Use the [Ubuntu GPU LocalModel cache runbook](ubuntu-gpu-localmodel-runbook.md) 
 
 Read [Ubuntu GPU LocalModel theory](ubuntu-gpu-localmodel-theory.md) for the controller, cache, request, and telemetry paths.
 
+Read [Ubuntu GPU workshop decisions](ubuntu-gpu-workshop-decisions.md) for every version, identity, security, and cleanup choice.
 When you record the final demo, use the [screenshot capture guide](one-click-llm-deployment-screenshot-guide.md).
 
 ## Bring to the session
