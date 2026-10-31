@@ -2,7 +2,9 @@
 
 Use this checklist before the Open Source Hub workshop. Complete it before the recorded or live demonstration.
 
-The workshop runbook starts with an installed NVIDIA driver, Docker, and command-line tools. It creates the Kubernetes cluster and all application resources.
+The workshop starts with an installed NVIDIA driver, Docker, and command-line tools.
+
+The runbook creates the Kubernetes cluster and all application resources.
 
 ## Supported environment
 
@@ -10,11 +12,11 @@ Use a disposable native Ubuntu GPU machine with the `x86_64` architecture.
 
 Do not use these environments for this runbook:
 
-- WSL 2
-- macOS
-- ARM64
-- a shared production Kubernetes cluster
-- a machine with unrelated Kubernetes workloads
+- WSL 2.
+- macOS.
+- ARM64.
+- A shared production Kubernetes cluster.
+- A machine with unrelated Kubernetes workloads.
 
 Use the separate WSL runbook for a Windows workstation.
 
@@ -38,7 +40,7 @@ The tested Minikube node uses 4 CPUs and 12 GiB memory. Do not allocate all host
 
 ## Verified software versions
 
-The rehearsal used these versions:
+The rehearsal used the versions in `ubuntu-gpu-workshop.env.example`.
 
 | Tool | Verified version |
 |---|---|
@@ -53,40 +55,40 @@ The rehearsal used these versions:
 | KServe | 0.21.0 |
 | vLLM runtime image | `ghcr.io/llm-d/llm-d-cuda:v0.9.0` |
 
-Later versions can work, but they are outside the verified workshop combination.
+Other versions can work. They are outside the verified workshop combination and require a new rehearsal.
 
 ## Required host tools
 
 Install these tools before the workshop:
 
-- NVIDIA Linux driver
-- NVIDIA Container Toolkit
-- Docker Engine
-- Git
-- Make
-- Curl
-- Minikube
-- kubectl
-- Helm
+- NVIDIA Linux driver.
+- NVIDIA Container Toolkit.
+- Docker Engine.
+- Git.
+- Make.
+- Curl.
+- Minikube.
+- kubectl.
+- Helm.
 
 The local presentation computer also needs:
 
-- an SSH client
-- Curl
-- `jq`, recommended for readable JSON
-- screen-recording software
+- An SSH client.
+- Curl.
+- `jq` for readable JSON.
+- Screen-recording software.
 
 ## Network access
 
 The GPU machine needs outbound HTTPS access to these services:
 
-- GitHub and GitHub Container Registry
-- Docker Hub
-- NVIDIA NGC
-- Quay
-- Hugging Face
-- Jetstack Helm repository
-- OpenEverest Helm repository
+- GitHub and GitHub Container Registry.
+- Docker Hub.
+- NVIDIA NGC.
+- Quay.
+- Hugging Face.
+- Jetstack Helm repository.
+- OpenEverest Helm repository.
 
 Allow at least 30 minutes for first-time image pulls. A slow connection can require 90 minutes or more.
 
@@ -131,7 +133,7 @@ make --version
 curl --version
 ```
 
-Continue only when all checks pass:
+When all checks pass, continue:
 
 - The operating system is Ubuntu.
 - The architecture is `x86_64`.
@@ -140,47 +142,82 @@ Continue only when all checks pass:
 - At least 60 GiB disk space is free.
 - Minikube, kubectl, Helm, Git, Make, and Curl are available.
 
+## Prepare the workshop files
+
+If the workshop repository is absent, get it:
+
+```bash
+DEMO_REPO_DIR=${DEMO_REPO_DIR:-"$HOME/src/kserve-demo"}
+if [ ! -d "$DEMO_REPO_DIR/.git" ]; then
+  mkdir -p "$(dirname "$DEMO_REPO_DIR")"
+  git clone https://github.com/atharvamhaske/kserve-demo.git "$DEMO_REPO_DIR"
+fi
+```
+
+Create one private configuration file:
+
+```bash
+WORKSHOP_CONFIG=${WORKSHOP_CONFIG:-"$HOME/ubuntu-gpu-workshop.env"}
+if [ ! -e "$WORKSHOP_CONFIG" ]; then
+  cp "$DEMO_REPO_DIR/docs/ubuntu-gpu-workshop.env.example" "$WORKSHOP_CONFIG"
+fi
+chmod 600 "$WORKSHOP_CONFIG"
+${EDITOR:-nano} "$WORKSHOP_CONFIG"
+set -a
+. "$WORKSHOP_CONFIG"
+set +a
+```
+
+The template contains tested workshop inputs. It contains no password, token, private key, public IP address, or Kubernetes Secret.
+
 ## Clean starting state
 
-The runbook expects no Minikube profile named `everest-gpu` and no previous provider source directory.
+The runbook expects no configured Minikube profile and no previous provider source directory.
 
 Check the state:
 
 ```bash
-minikube status -p everest-gpu || true
-test ! -e "$HOME/src/provider-kserve-localmodel"
+minikube status -p "$PROFILE" || true
+test ! -e "$REPO_DIR"
 ```
 
-If the profile exists from an earlier disposable lab, delete it:
+If the profile belongs to an earlier disposable lab, delete it:
 
 ```bash
-minikube delete -p everest-gpu
+minikube delete -p "$PROFILE"
 ```
 
-Delete the source directory only when it belongs to an earlier run of this workshop:
+If the source directory belongs to an earlier workshop, delete it:
 
 ```bash
-rm -rf "$HOME/src/provider-kserve-localmodel"
+rm -rf "$REPO_DIR"
 ```
 
 Do not delete an unrelated source checkout.
 
 ## Presenter preparation
 
+Read these documents before the rehearsal:
+
+- [Ubuntu GPU LocalModel theory](ubuntu-gpu-localmodel-theory.md).
+- [Ubuntu GPU workshop decisions](ubuntu-gpu-workshop-decisions.md).
+
 Complete one full rehearsal before recording.
 
 Save these fallback materials:
 
-- the successful terminal recording
-- the final `Instance` YAML
-- the final cache YAML
-- the model-server logs
-- the vLLM metrics output
-- one screenshot of the GPU status
-- one successful chat response
+- The successful terminal recording.
+- The final `Instance` YAML.
+- The final cache YAML.
+- The model-server logs.
+- The vLLM metrics output.
+- One screenshot of the GPU status.
+- One successful chat response.
 
 Use the recorded demo as the primary fallback. Keep the live cluster as an optional second demonstration.
 
 ## Next step
 
 Continue with [Ubuntu GPU LocalModel cache runbook](ubuntu-gpu-localmodel-runbook.md).
+
+Final approval rests with the writer.
