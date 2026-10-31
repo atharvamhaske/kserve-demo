@@ -14,236 +14,176 @@
 
 [Add to Calendar](assets/one-click-llm-deployment/one-click-llm-deployment.ics)
 
-The calendar file uses the venue-local time from the event listing. The supplied listing does not name a time zone.
+The calendar file uses the venue-local time from the event listing. The listing does not name a time zone.
 
 ## Abstract
 
-Deploying an LLM on Kubernetes by hand is toil. This workshop flips that.
+An LLM deployment needs more than one container.
 
-Apply one OpenEverest `Instance`. `provider-kserve` turns it into a KServe model server with an OpenAI-compatible API.
+Kubernetes must schedule a GPU, start a model server, expose a Service, report status, and publish metrics.
 
-We will deploy Qwen3 0.6B on one NVIDIA GPU. We will cache the model on the node and call it through vLLM.
+In this workshop, we create one OpenEverest `Instance` through the UI.
 
-Then we will delete the serving Pod. The replacement Pod will reuse the cached model without another download Job.
+`provider-kserve` turns that intent into a KServe `LLMInferenceService`. KServe creates the vLLM workload and Service.
+
+We call Qwen3 0.6B through an OpenAI-compatible API. Then we inspect vLLM metrics in Prometheus and Grafana.
+
+This workshop uses direct model delivery and adds no persistent model-delivery component.
+
+## The problem
+
+Without a platform contract, users must understand several APIs:
+
+- Kubernetes GPU resources.
+- KServe serving resources.
+- vLLM runtime flags.
+- Model locations and names.
+- Services and routing.
+- Prometheus discovery.
+- Health and readiness status.
+
+OpenEverest presents these choices in one provider-backed form.
+
+The abstraction does not hide Kubernetes. Every generated resource remains visible through `kubectl`.
+
+## Architecture
+
+```text
+OpenEverest UI
+  -> OpenEverest Instance
+  -> provider-kserve 0.5.0
+  -> KServe LLMInferenceService 0.21.0
+  -> Deployment, Service, and vLLM Pod
+  -> NVIDIA GPU
+  -> OpenAI-compatible API
+  -> PodMonitor, Prometheus, and Grafana
+```
+
+The controllers create and repair resources. They are not in the inference request path.
+
+## Current workshop releases
+
+| Component | Version |
+|---|---:|
+| OpenEverest | `2.0.0-dev.4` Developer Preview |
+| provider-kserve | `0.5.0` |
+| KServe | `0.21.0` |
+| Kubernetes | `v1.36.6` |
+| Minikube | `v1.39.0` |
+| cert-manager | `v1.21.3` |
+| kube-prometheus-stack | `92.16.1` |
+| Prometheus | `v3.15.1` |
+| Grafana | `13.3.0` |
+
+OpenEverest stable v1.17.0 does not support provider-kserve 0.5.0.
+
+The workshop uses the newest compatible OpenEverest v2 Developer Preview on a fresh cluster.
+
+Minikube 1.39 defaults to Kubernetes 1.37. The provider supports Kubernetes through 1.36, so the runbook pins 1.36.6.
+
+## UI deployment
+
+The live workflow starts on the OpenEverest Instances page.
+
+We select:
+
+| Field | Value |
+|---|---|
+| Provider | `provider-kserve` |
+| Topology | `llm` |
+| Model | `Qwen3 0.6B` |
+| Served model name | `qwen3-0.6b` |
+| Compute profile | GPU |
+| GPUs per Pod | `1` |
+| Replicas | `1` |
+| External access | ClusterIP |
+| Prometheus metrics | On |
+
+The provider supplies the model catalog and form schema.
+
+Operators can change the catalog through provider Helm values. The frontend does not contain a fixed model list.
+
+## What one Instance creates
+
+The UI stores one `Instance` resource.
+
+The provider creates an `LLMInferenceService`. KServe creates the Deployment, Service, storage initializer, and vLLM Pod.
+
+The storage initializer downloads the public Qwen model for the Pod.
+
+The provider reports workload status back to the original `Instance`.
+
+The same form also exposes CPU serving, autoscaling, OCI model images, LoRA, tool calling, reasoning, AI Gateway routing, tracing, and multi-node workers.
+
+Those optional paths need separate infrastructure or verification. The workshop does not call them verified results.
+
+## OpenAI-compatible API
+
+After the Pod becomes ready, the workshop calls:
+
+```text
+GET /v1/models
+POST /v1/chat/completions
+```
+
+The model list must contain `qwen3-0.6b`.
+
+The chat response proves that routing, model delivery, vLLM startup, and GPU inference work together.
+
+## Monitoring
+
+When the Prometheus Operator CRD exists, provider-kserve creates one `PodMonitor`.
+
+Prometheus scrapes vLLM on port 8000. Grafana shows:
+
+- Prompt and generated token throughput.
+- Running and waiting requests.
+- Time to first token.
+- End-to-end request latency.
+- Successful requests.
+- Preemptions.
+
+A ready Pod does not prove useful inference. The workshop checks the API and request metrics.
+
+## Live schedule
+
+| Time | Content |
+|---|---|
+| 0 to 5 minutes | Problem, architecture, and one-resource idea |
+| 5 to 12 minutes | OpenEverest UI and model selector |
+| 12 to 20 minutes | Deploy and explain the controller chain |
+| 20 to 25 minutes | OpenAI-compatible API request |
+| 25 to 32 minutes | Grafana and vLLM metrics |
+| 32 to 38 minutes | Inspect generated Kubernetes resources |
+| 38 to 42 minutes | Show optional UI selectors |
+| 42 to 45 minutes | Questions |
+
+## What the demonstration proves
+
+- The host and container runtime can use the NVIDIA GPU.
+- Kubernetes advertises the GPU.
+- The released provider registers with OpenEverest.
+- The UI creates one `Instance`.
+- KServe creates a ready vLLM workload.
+- `/v1/models` returns `qwen3-0.6b`.
+- Chat completion returns assistant text.
+- Prometheus scrapes the vLLM Pod.
+- Grafana shows the completed request.
+
+This is a functional workshop result. It is not a performance benchmark or production-readiness claim.
+
+## Follow the workshop
+
+Use the [all-in-one runbook](open-source-hub-workshop/) for every command, UI step, speaker cue, recovery check, and cleanup action.
+
+Read the [release sources](open-source-hub-workshop/release-sources.md) for compatibility evidence.
+
+Use the [screenshot guide](one-click-llm-deployment-screenshot-guide.md) during the final rehearsal.
 
 ## Speaker
 
 Atharva Mhaske is a Backend and Infra Engineer at cld9.ai.
 
 He is a Google Summer of Code 2026 mentee at OpenScienceLabs. He is also an OpenTelemetry community member and contributor.
-
-His OpenTelemetry work focuses on Go compile-time instrumentation.
-
-Atharva led and shipped the KServe provider for OpenEverest, a CNCF Sandbox project. The provider serves LLMs on Kubernetes.
-
-He ran the OpenEverest booth at KubeCon India 2026 and speaks at CNCG Pune.
-
-## The problem
-
-A hand-built LLM deployment needs more than a Pod.
-
-You need a model server, GPU scheduling, storage, model download, readiness, service discovery, credentials, status, and cleanup.
-
-Each part has a different Kubernetes API. Each controller has a different failure mode.
-
-The YAML grows before the first prompt reaches the model.
-
-OpenEverest gives the user one resource. The provider translates that resource into the KServe objects that run the model.
-
-## What we will build
-
-```text
-OpenEverest Instance
-  -> provider-kserve
-  -> KServe LLMInferenceService
-  -> LocalModel cache
-  -> vLLM Pod
-  -> NVIDIA GPU
-  -> OpenAI-compatible API
-```
-
-The demo uses these verified components:
-
-| Component | Workshop value |
-|---|---|
-| Kubernetes | 1.35.0 on Minikube |
-| OpenEverest | 2.0.0-dev.4 |
-| KServe | 0.21.0 |
-| Runtime | vLLM 0.26.0 |
-| Model | `Qwen/Qwen3-0.6B` |
-| GPU | NVIDIA RTX PRO 6000 Blackwell |
-| Model cache | KServe LocalModel |
-| API | `/v1/models` and `/v1/chat/completions` |
-
-## The one resource
-
-This `Instance` contains the user intent:
-
-```yaml
-apiVersion: core.openeverest.io/v1alpha1
-kind: Instance
-metadata:
-  name: qwen-demo
-spec:
-  providerRef:
-    name: provider-kserve
-  topology:
-    type: llm
-  components:
-    llmEngine:
-      type: vllm
-      replicas: 1
-      parameters:
-        modelURI: hf://Qwen/Qwen3-0.6B
-        modelName: qwen3-0.6b
-        computeProfile: gpu
-        gpuCount: 1
-        localModelCache:
-          enabled: enabled
-          modelSize: 3Gi
-          nodeGroup: model-workers
-```
-
-The attendee does not create the serving Deployment, Service, cache PVC, local PV, or download Job by hand.
-
-## What happens after apply
-
-`provider-kserve` reads the `Instance` and creates a KServe `LLMInferenceService`.
-
-KServe creates the LocalModel cache request. A download Job writes the model into node-local storage.
-
-The cache reports one available copy. KServe mounts that copy into the vLLM Pod at `/mnt/models`.
-
-vLLM loads Qwen3 from the mounted directory. It starts an OpenAI-compatible server on port 8000.
-
-OpenEverest writes readiness and connection details back to the original `Instance`.
-
-The final status is small and useful:
-
-```yaml
-status:
-  components:
-  - name: llmEngine
-    readyReplicas: 1
-    replicas: 1
-  message: 'Model cache "qwen-demo": 1/1 nodes ready'
-  phase: Ready
-```
-
-## Why cache the model
-
-Container image reuse and model reuse are different.
-
-The runtime image contains vLLM and its CUDA dependencies. The model cache contains the Qwen checkpoint and configuration.
-
-A replacement Pod can reuse both. The demo checks that no new model download Job appears after Pod deletion.
-
-Large model checkpoints make this distinction important.
-
-## The request path
-
-The workshop uses a direct port-forward to the workload Service.
-
-```text
-curl
-  -> kubectl port-forward
-  -> KServe workload Service
-  -> vLLM Pod
-  -> NVIDIA GPU
-```
-
-First, list the served models:
-
-```bash
-curl --fail-with-body http://localhost:8000/v1/models
-```
-
-Then send a chat request:
-
-```bash
-curl --fail-with-body http://localhost:8000/v1/chat/completions \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "model": "qwen3-0.6b",
-    "messages": [
-      {
-        "role": "user",
-        "content": "Explain why model caching reduces cold-start latency."
-      }
-    ],
-    "max_tokens": 96,
-    "temperature": 0
-  }'
-```
-
-The verified rehearsal recorded successful `2xx` responses for both API paths.
-
-## Telemetry without another stack
-
-vLLM publishes Prometheus metrics on `/metrics`.
-
-The workshop reads them directly. It does not install Prometheus or Grafana during the 45-minute session.
-
-The useful counters include prompt tokens, generated tokens, successful requests, time to first token, and full request latency.
-
-The verified rehearsal processed three chat requests. It recorded 60 prompt tokens and 167 generated tokens.
-
-`nvidia-smi` showed the vLLM engine using 20,172 MiB of GPU memory.
-
-## The real edge in this demo
-
-The model file path crosses three Linux identities.
-
-The download Job writes the files. The LocalModel node agent inspects them. The vLLM container reads them.
-
-The verified setup gives the cache group 1000. The serving Pod receives supplementary group 1000 through `fsGroup`.
-
-Without that group, vLLM reports `/mnt/models` as an invalid local directory. The model exists, but the process cannot read it.
-
-This is why the workshop waits for cache `1/1` before it checks the serving Pod.
-
-## What the live demo proves
-
-The following observed states complete the demo:
-
-- Kubernetes reports one allocatable NVIDIA GPU.
-- The CUDA smoke Pod prints `Test PASSED`.
-- The LocalModel cache reports `1/1` copies.
-- The OpenEverest `Instance` reports `Ready`.
-- The vLLM Pod reads `/mnt/models/config.json`.
-- `/v1/models` returns `qwen3-0.6b`.
-- `/v1/chat/completions` returns a completion.
-- vLLM metrics count the request.
-- The replacement Pod gets a new UID.
-- The replacement creates no new download Job.
-
-## Follow the workshop
-
-Start with the [Ubuntu GPU workshop prerequisites](ubuntu-gpu-workshop-prerequisites.md).
-
-Open the [workshop presentation index](open-source-hub-workshop/) first.
-
-The index links separate folders for the UI runbook, terminal runbook, and 45-minute teleprompter.
-
-Use the [Ubuntu GPU LocalModel cache runbook](ubuntu-gpu-localmodel-runbook.md) for installation and cleanup.
-
-Read [Ubuntu GPU LocalModel theory](ubuntu-gpu-localmodel-theory.md) for the controller, cache, request, and telemetry paths.
-
-Read [Ubuntu GPU workshop decisions](ubuntu-gpu-workshop-decisions.md) for every version, identity, security, and cleanup choice.
-When you record the final demo, use the [screenshot capture guide](one-click-llm-deployment-screenshot-guide.md).
-
-## Bring to the session
-
-Use a disposable native Ubuntu `x86_64` machine with one NVIDIA GPU.
-
-Install Docker, the NVIDIA Container Toolkit, Minikube, kubectl, Helm, Git, Make, and Curl before the session.
-
-Reserve at least 60 GiB of free disk space. First-time image pulls can take 30 to 90 minutes.
-
-Do not use a shared production cluster.
-
-## Calendar download
-
-[Add to Calendar](assets/one-click-llm-deployment/one-click-llm-deployment.ics)
 
 Final approval rests with the writer.

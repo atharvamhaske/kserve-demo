@@ -1,10 +1,37 @@
 # OpenEverest KServe GPU demo
 
-A reproducible workshop lab for serving Qwen3 0.6B on an NVIDIA GPU with OpenEverest, provider-kserve, KServe, vLLM, Minikube, Docker, and WSL 2.
+A reproducible workshop for serving Qwen3 0.6B on an NVIDIA GPU with OpenEverest, provider-kserve, KServe, and vLLM.
 
-The direct model-serving path was verified end to end. The optional Envoy AI Gateway path is documented as a separate rehearsal and remains unverified in this lab until its success gates pass.
+## Open Source Hub workshop
 
-## Verified result
+Start with the [all-in-one workshop runbook](docs/open-source-hub-workshop/README.md).
+
+It contains the latest compatible release pins, every cluster command, every OpenEverest UI step, speaker cues, recovery, and cleanup.
+
+The current path uses released provider-kserve 0.5.0 on native Ubuntu. It uses direct model delivery and no persistent model-delivery component.
+
+## Quick start
+
+1. Open the [all-in-one runbook](docs/open-source-hub-workshop/README.md).
+2. Complete host, GPU, Minikube, and release installation sections before the event.
+3. Create `qwen-demo` through the OpenEverest UI.
+4. Verify the OpenAI-compatible API, vLLM metrics, and Grafana dashboard.
+5. Use the embedded 45-minute speaker timeline during the session.
+
+## Workshop files
+
+```text
+docs/
+├── open-source-hub-workshop/
+│   ├── README.md                            # All commands, UI steps, speaker cues, recovery, and cleanup
+│   └── release-sources.md                   # Current release and compatibility evidence
+├── one-click-llm-deployment-workshop.md     # Public workshop page
+├── one-click-llm-deployment-screenshot-guide.md
+└── assets/one-click-llm-deployment/
+    └── one-click-llm-deployment.ics         # Add to Calendar file
+```
+
+## Earlier verified WSL result
 
 The lab completed this path:
 
@@ -31,18 +58,21 @@ Verified outcomes:
 - `/v1/chat/completions` returned a completed response.
 - `nvidia-smi` in the model container showed GPU use.
 
-## Repository map
+## Additional references
 
 | Document | Purpose |
 |---|---|
-| [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md) | Full copy-paste setup, deployment, UI, inference, and recording procedure |
-| [Ubuntu GPU LocalModel cache runbook](docs/ubuntu-gpu-localmodel-runbook.md) | Build PR #117 locally and test node-local cache download, GPU serving, Pod replacement reuse, and cleanup |
-| [Lab findings and troubleshooting](docs/wsl-gpu-lab-findings.md) | Environment, every observed failure, root causes, fixes, and final evidence |
-| [Workshop FAQ](docs/wsl-gpu-workshop-faq.md) | Architecture, 58 audience questions, skeptical questions, demo boundaries, and fallback answers |
-| [Kubernetes and vLLM observability](docs/kubernetes-and-vllm-observability.md) | Namespace, Pod, controller, CRD, request-flow, metrics, Grafana, and OpenTelemetry revision guide |
+| [All-in-one Open Source Hub runbook](docs/open-source-hub-workshop/README.md) | Current native Ubuntu setup, UI deployment, API, metrics, speaker cues, recovery, and cleanup |
+| [Workshop release sources](docs/open-source-hub-workshop/release-sources.md) | Official version and compatibility evidence |
+| [Public workshop page](docs/one-click-llm-deployment-workshop.md) | Event summary, architecture, schedule, and proof |
+| [Screenshot guide](docs/one-click-llm-deployment-screenshot-guide.md) | Exact capture points and file names |
+| [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md) | Earlier verified WSL setup, deployment, UI, inference, and recording procedure |
+| [Lab findings and troubleshooting](docs/wsl-gpu-lab-findings.md) | Earlier environment, observed failures, root causes, fixes, and evidence |
+| [Workshop FAQ](docs/wsl-gpu-workshop-faq.md) | Architecture, audience questions, demo boundaries, and fallback answers |
+| [Kubernetes and vLLM observability](docs/kubernetes-and-vllm-observability.md) | Controller, request-flow, metrics, Grafana, and OpenTelemetry reference |
 | [Local Envoy AI Gateway rehearsal](docs/envoy-ai-gateway-rehearsal.md) | Unverified local routing, authentication, 401, and 403 exercise |
 
-Start with the [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md). Use the findings when a step fails. Read the FAQ before presenting.
+Use the all-in-one runbook for the current workshop. Use the WSL documents only for the earlier verified environment.
 
 ## Cluster mental model
 
@@ -173,7 +203,7 @@ instrumented KServe and model components
 
 Metrics and traces are different:
 
-- Metrics are numeric time series such as queue depth, token counts, latency histograms, and KV-cache utilization.
+- Metrics are numeric time series such as queue depth, token counts, latency histograms, and KV-cache usage.
 - Traces connect spans from one request across instrumented components.
 - A `PodMonitor` does not collect traces.
 - An OpenTelemetry Collector does not create the provider's Prometheus metrics.
@@ -199,7 +229,7 @@ These are the specifications of the verified lab, not minimum requirements.
 | Minikube driver | Docker |
 | Kubernetes runtime | Docker |
 
-The lab did not establish a universal minimum hardware specification. Revalidate capacity when changing the model, context length, concurrency, runtime image, or Kubernetes topology.
+The lab did not establish a universal minimum hardware specification. When the model, context length, concurrency, runtime image, or Kubernetes topology changes, revalidate capacity.
 
 ## Model specifications
 
@@ -248,7 +278,7 @@ Model source: [Qwen3 0.6B model card](https://huggingface.co/Qwen/Qwen3-0.6B).
 | KServe bundle | 0.21 |
 | Envoy Gateway for optional rehearsal | 1.9.2 |
 
-Use the pinned combination when reproducing the lab. Revalidate all WSL-specific workarounds after an upgrade.
+When reproducing the lab, use the pinned combination. After an upgrade, revalidate all WSL-specific workarounds.
 
 ## Critical WSL runtime configuration
 
@@ -290,7 +320,7 @@ Incorrect:
 
 The incorrect value generates an invalid GCC linker search argument and prevents vLLM from becoming ready.
 
-## Quick start
+## Earlier WSL quick start
 
 ### 1. Clone this repository
 
@@ -390,7 +420,7 @@ curl --fail-with-body http://127.0.0.1:8000/v1/models
 
 ### 8. Run a chat completion
 
-Keep this command on one shell line if the terminal copy tool breaks multiline commands:
+If the terminal copy tool breaks multiline commands, keep this command on one shell line:
 
 ```bash
 curl --fail-with-body http://127.0.0.1:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{"model":"qwen3-0.6b","messages":[{"role":"user","content":"Explain how this request reaches the GPU in three short steps. /no_think"}],"chat_template_kwargs":{"enable_thinking":false},"max_tokens":150,"temperature":0.7}'
@@ -421,7 +451,7 @@ The lab loaded Qwen3 into GPU memory before Triton failed to link `libcuda.so.1`
 
 ### The old Pod can hold the only GPU
 
-A replacement Pod may report `Insufficient nvidia.com/gpu` until the old Pod terminates. Read events in time order.
+A replacement Pod can report `Insufficient nvidia.com/gpu` until the old Pod terminates. Read events in time order.
 
 ### Replacement Pods redownload the model
 
@@ -466,21 +496,19 @@ provider-kserve uses Kubernetes APIs and is distribution agnostic. GPU runtime i
 
 ## Demo claim boundary
 
-A defensible statement:
-
-> The pinned OpenEverest and provider-kserve stack served one Qwen3 0.6B chat completion through a direct Kubernetes Service on one WSL-backed NVIDIA GPU.
+The pinned OpenEverest and provider-kserve stack served one Qwen3 0.6B chat completion through a direct Kubernetes Service on one WSL-backed NVIDIA GPU.
 
 Do not convert that result into claims about performance, reliability, high availability, public ingress, TLS, quotas, multi-node serving, or production readiness.
 
 ## Upstream projects
 
-- [OpenEverest](https://github.com/openeverest/openeverest)
-- [provider-kserve](https://github.com/openeverest/provider-kserve)
-- [KServe](https://github.com/kserve/kserve)
-- [vLLM](https://github.com/vllm-project/vllm)
-- [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway)
-- [Minikube NVIDIA GPU guide](https://minikube.sigs.k8s.io/docs/tutorials/nvidia/)
-- [NVIDIA CUDA on WSL guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html)
+- [OpenEverest](https://github.com/openeverest/openeverest).
+- [provider-kserve](https://github.com/openeverest/provider-kserve).
+- [KServe](https://github.com/kserve/kserve).
+- [vLLM](https://github.com/vllm-project/vllm).
+- [Envoy AI Gateway](https://github.com/envoyproxy/ai-gateway).
+- [Minikube NVIDIA GPU guide](https://minikube.sigs.k8s.io/docs/tutorials/nvidia/).
+- [NVIDIA CUDA on WSL guide](https://docs.nvidia.com/cuda/wsl-user-guide/index.html).
 
 ## Security
 
