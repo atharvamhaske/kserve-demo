@@ -59,7 +59,7 @@ Gate: Host and container output list the same NVIDIA GPU. At least 60 GiB disk s
 ## 4. Create or reuse the GPU Minikube cluster
 The official Minikube NVIDIA procedure requires `net.core.bpf_jit_harden=0` with the Docker driver.
 ```bash
-export ORIGINAL_BPF_JIT_HARDEN=$(sysctl -n net.core.bpf_jit_harden)
+export ORIGINAL_BPF_JIT_HARDEN=$(sudo sysctl -n net.core.bpf_jit_harden)
 printf 'Original net.core.bpf_jit_harden=%s\n' "$ORIGINAL_BPF_JIT_HARDEN"
 ```
 Warning: Setting `0` reduces kernel hardening. Use it only for this lab. Cleanup restores the runtime value and creates no sysctl file.
