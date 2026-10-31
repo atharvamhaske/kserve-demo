@@ -36,6 +36,7 @@ Verified outcomes:
 | Document | Purpose |
 |---|---|
 | [WSL GPU demo runbook](docs/wsl-gpu-demo-runbook.md) | Full copy-paste setup, deployment, UI, inference, and recording procedure |
+| [Ubuntu GPU LocalModel cache runbook](docs/ubuntu-gpu-localmodel-runbook.md) | Build PR #117 locally and test node-local cache download, GPU serving, Pod replacement reuse, and cleanup |
 | [Lab findings and troubleshooting](docs/wsl-gpu-lab-findings.md) | Environment, every observed failure, root causes, fixes, and final evidence |
 | [Workshop FAQ](docs/wsl-gpu-workshop-faq.md) | Architecture, 58 audience questions, skeptical questions, demo boundaries, and fallback answers |
 | [Kubernetes and vLLM observability](docs/kubernetes-and-vllm-observability.md) | Namespace, Pod, controller, CRD, request-flow, metrics, Grafana, and OpenTelemetry revision guide |
