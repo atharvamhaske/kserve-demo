@@ -12,14 +12,15 @@ Create this repository directory:
 mkdir -p docs/assets/one-click-llm-deployment
 ```
 
-Open four terminal windows:
+Open five terminal windows:
 
 | Terminal | Role |
 |---|---|
-| 1 | Run the main runbook commands. |
-| 2 | Watch cache resources, then run the model Service port-forward. |
+| 1 | Run the main cluster and cache-reuse commands. |
+| 2 | Watch cache resources. |
 | 3 | Run the OpenEverest UI port-forward. |
-| 4 | Call APIs and show telemetry. |
+| 4 | Run the model Service port-forward. |
+| 5 | Run API, metrics, GPU, and Grafana commands. |
 
 Set the terminal font to at least 18 points. Use a dark background and high-contrast text.
 
@@ -163,9 +164,9 @@ Save the image as:
 
 ## Capture 7: OpenAI-compatible API
 
-Keep the model Service port-forward running in terminal 2.
+Keep the model Service port-forward running in terminal 4.
 
-Use terminal 4 after runbook step 11.
+Use terminal 5 after runbook step 11.
 
 Run the `/v1/models` command. Then run the chat completion command from the runbook.
 
@@ -175,7 +176,7 @@ If `jq` is available, format each response:
 curl --fail-with-body http://localhost:8000/v1/models | jq
 ```
 
-When both API responses are valid, click terminal 4.
+When both API responses are valid, click terminal 5.
 
 The model list must contain `qwen3-0.6b`. The chat response must contain assistant text and no error.
 
@@ -189,7 +190,7 @@ Save the image as:
 
 ## Capture 8: vLLM metrics and GPU
 
-Use terminal 4 immediately after the chat request.
+Use terminal 5 immediately after the chat request.
 
 Run:
 
