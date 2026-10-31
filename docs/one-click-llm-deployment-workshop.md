@@ -221,11 +221,13 @@ The following observed states complete the demo:
 
 Start with the [Ubuntu GPU workshop prerequisites](ubuntu-gpu-workshop-prerequisites.md).
 
-Use the [Ubuntu GPU LocalModel cache runbook](ubuntu-gpu-localmodel-runbook.md) during the session.
+Open the [workshop presentation index](open-source-hub-workshop/) first.
+
+The index links separate folders for the UI runbook, terminal runbook, and 45-minute teleprompter.
+
+Use the [Ubuntu GPU LocalModel cache runbook](ubuntu-gpu-localmodel-runbook.md) for installation and cleanup.
 
 Read [Ubuntu GPU LocalModel theory](ubuntu-gpu-localmodel-theory.md) for the controller, cache, request, and telemetry paths.
-
-Read [Ubuntu GPU workshop decisions](ubuntu-gpu-workshop-decisions.md) for every version, identity, security, and cleanup choice.
 
 When you record the final demo, use the [screenshot capture guide](one-click-llm-deployment-screenshot-guide.md).
 
