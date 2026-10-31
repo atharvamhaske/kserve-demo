@@ -2,35 +2,17 @@
 
 Use this guide during the final Open Source Hub rehearsal.
 
-Follow the [all-in-one runbook](open-source-hub-workshop/).
+Do not capture passwords, API-key values, SSH commands, public host addresses, Secrets, or kubeconfig data.
 
-## Before the demo
-
-Create the asset directory:
+## Prepare the capture directory
 
 ```bash
-mkdir -p docs/assets/one-click-llm-deployment
+mkdir -p docs/assets/one-click-llm-deployment/screenshots
 ```
 
-Open five terminal windows:
-
-| Terminal | Role |
-|---|---|
-| 1 | Install and inspect the platform. |
-| 2 | Watch the created resources. |
-| 3 | Run the OpenEverest UI port-forward. |
-| 4 | Run the model Service port-forward. |
-| 5 | Run Grafana, API, metrics, and GPU commands. |
-
-Use a terminal font of at least 18 points.
-
-Do not show passwords, SSH commands, public addresses, tokens, private keys, kubeconfig data, or Secrets.
-
-Save each file with the exact name from this guide.
+Use the same browser zoom, terminal font, and window size for every capture.
 
 ## Capture 1: GPU preflight
-
-Use terminal 1 before Minikube starts.
 
 Run:
 
@@ -39,209 +21,193 @@ nvidia-smi
 docker run --rm --gpus all ubuntu:24.04 nvidia-smi
 ```
 
-Capture both commands showing the same NVIDIA GPU.
+Capture only GPU name, driver, CUDA version, and matching container output.
 
-Save:
+Save as:
 
 ```text
-01-gpu-preflight.png
+docs/assets/one-click-llm-deployment/screenshots/01-gpu-preflight.png
 ```
 
-## Capture 2: Kubernetes GPU
+## Capture 2: installed platform
 
-Use terminal 1 after the CUDA smoke Pod succeeds.
+Run after `./scripts/workshop.sh verify`:
+
+```bash
+helm list --all-namespaces
+kubectl get provider provider-kserve
+kubectl get plugins.extensions.openeverest.io plugin-user-management
+kubectl get instancepreset
+```
+
+Show five Helm releases, the provider, the plugin, and three presets.
+
+Save as `02-installed-platform.png`.
+
+## Capture 3: workshop preset
+
+Open Instances, select Create, then select `provider-kserve` if the drawer appears.
+
+Capture the Basic Info step with these preset cards visible:
+
+- `kserve-smollm-cpu`
+- `kserve-qwen-gpu`
+- `kserve-qwen-demo-gateway`
+
+Select `kserve-qwen-demo-gateway`. Show Namespace `default`, Display name `qwen-demo`, and locked Topology `llm`.
+
+Save as `03-workshop-preset.png`.
+
+## Capture 4: manual Routing selectors
+
+Open a second unsaved Start from scratch form. Select Configure more options.
+
+Capture only the Routing section:
+
+- External access: Envoy AI Gateway
+- Tokens per User per Hour: 300
+
+Do not submit this second form.
+
+Save as `04-routing-selectors.png`.
+
+## Capture 5: ready model and HTTPS details
+
+Open the ready `qwen-demo` Instance and its Connection details.
+
+Show Base URL and Model. Hide the API-key value.
+
+The Base URL must use `https://` and a `nip.io` hostname.
+
+Save as `05-model-connection.png`.
+
+## Capture 6: Users tab
+
+Open the Users tab before creating consumer keys.
+
+Show:
+
+- API keys heading
+- `qwen-demo` System user
+- Create API key button
+
+Save as `06-users-system-key.png`.
+
+## Capture 7: Create API key dialog
+
+Select Create API key.
+
+Set:
+
+- Name: `chat-app`
+- Role: `invoke`
+
+Capture the form before selecting Create.
+
+Save as `07-create-api-key.png`.
+
+## Capture 8: generated client values
+
+After creation, capture the success dialog.
+
+Show the field labels:
+
+- Name
+- API key
+- Base URL
+- Model
+
+Redact the API-key value. Keep the Base URL and Model visible.
+
+Save as `08-api-key-credentials.png`.
+
+## Capture 9: curl and Go consumers
+
+Run the authenticated curl call and the checked-in Go client.
+
+Capture:
+
+- the HTTPS Base URL without its key;
+- one assistant response from curl;
+- one assistant response from Go.
+
+Save as `09-api-consumers.png`.
+
+## Capture 10: separate quotas
+
+Use `chat-app` until it returns `429`. Call the model with `batch-job` immediately afterward.
+
+Show:
+
+```text
+chat-app: HTTP 429
+batch-job: HTTP 200
+```
+
+Do not show either key.
+
+Save as `10-separate-quotas.png`.
+
+## Capture 11: key lifecycle
+
+Rotate `chat-app` and test the old key. Delete `batch-job` and test its key.
+
+Show only status results:
+
+```text
+old chat-app key: HTTP 401
+new chat-app key: HTTP 200
+deleted batch-job key: HTTP 401
+```
+
+Save as `11-key-lifecycle.png`.
+
+## Capture 12: per-key Grafana metrics
+
+Open the Envoy AI Gateway dashboard or Grafana Explore.
+
+Use:
+
+```promql
+sum by (openeverest_key_id, gen_ai_token_type) (
+  increase(gen_ai_client_token_usage_sum{gen_ai_token_type="total"}[1h])
+)
+```
+
+Show the `openeverest_key_id` series and the matching non-secret key ID from the terminal.
+
+Save as `12-per-key-metrics.png`.
+
+## Capture 13: generated resources
 
 Run:
 
 ```bash
-kubectl get node "$PROFILE" \
-  -o custom-columns='NAME:.metadata.name,READY:.status.conditions[?(@.type=="Ready")].status,GPU:.status.allocatable.nvidia\.com/gpu,VERSION:.status.nodeInfo.kubeletVersion'
-kubectl logs gpu-smoke
+kubectl -n default get \
+  instance,instanceuser,llminferenceservice,pod,svc,podmonitor
+kubectl -n everest-system get gateway,certificate
 ```
 
-Capture the allocatable GPU and `Test PASSED` before deleting the Pod.
+Show the resource chain without Secret data.
 
-Save:
-
-```text
-02-kubernetes-gpu.png
-```
-
-## Capture 3: Released platform
-
-Use terminal 1 after platform installation.
-
-Run:
-
-```bash
-helm list --all-namespaces --kube-context "$PROFILE"
-kubectl --context "$PROFILE" -n "$EVEREST_NS" get pods
-kubectl --context "$PROFILE" get provider provider-kserve
-```
-
-Capture the pinned releases, ready Pods, and registered Provider.
-
-Save:
-
-```text
-03-released-platform.png
-```
-
-Do not capture the OpenEverest password command.
-
-## Capture 4: OpenEverest model selector
-
-Use the browser during the UI creation section.
-
-Open Instances and start a new `llm` Instance with `provider-kserve`.
-
-Open the Model selector. Keep `Qwen3 0.6B` selected and the catalog visible.
-
-Include the Instance name, Provider, Topology, and Model fields.
-
-Take this image before clicking Create.
-
-Save:
-
-```text
-04-ui-model-selector.png
-```
-
-## Capture 5: Ready model resources
-
-Use terminal 1 after the serving Pod becomes ready.
-
-Run:
-
-```bash
-kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" -o wide
-kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" -o wide
-kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" -o wide
-kubectl -n "$INSTANCE_NS" get svc,podmonitor
-```
-
-Capture the Instance, `LLMInferenceService`, ready Pod, Service, and PodMonitor.
-
-Save:
-
-```text
-05-ready-model-resources.png
-```
-
-## Capture 6: OpenAI-compatible API
-
-Keep the model Service port-forward in terminal 4.
-
-Use terminal 5 after the API section.
-
-Run `/v1/models`, then run the chat completion request.
-
-Capture the model list and completed assistant response.
-
-Save:
-
-```text
-06-openai-api.png
-```
-
-The model list must contain `qwen3-0.6b`.
-
-## Capture 7: vLLM metrics and GPU
-
-Use terminal 5 immediately after the chat request.
-
-Run:
-
-```bash
-curl --fail-with-body http://localhost:8000/metrics | \
-  grep -F \
-    -e 'vllm:prompt_tokens_total' \
-    -e 'vllm:generation_tokens_total' \
-    -e 'vllm:request_success_total' \
-    -e 'vllm:time_to_first_token_seconds_count' \
-    -e 'vllm:e2e_request_latency_seconds_count'
-nvidia-smi
-```
-
-Capture positive counters and the `VLLM::EngineCore` GPU process.
-
-Save:
-
-```text
-07-vllm-metrics-gpu.png
-```
-
-## Capture 8: Grafana dashboard
-
-Open dashboard UID `provider-kserve-vllm`.
-
-Set the range to Last 5 minutes and refresh to 5 seconds.
-
-Capture token throughput, requests, time to first token, and end-to-end latency.
-
-Save:
-
-```text
-08-grafana-vllm.png
-```
-
-Do not capture the Grafana login page or password.
-
-## Capture 9: Generated controller chain
-
-Use terminal 1 during the generated resources section.
-
-Run:
-
-```bash
-kubectl -n "$INSTANCE_NS" get instance,llminferenceservice,pod,svc,podmonitor
-kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" \
-  -o jsonpath='{.metadata.ownerReferences}{"\n"}'
-kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" \
-  -o jsonpath='{.metadata.labels}{"\n"}'
-```
-
-Capture the resource list, owner reference, and Pod labels.
-
-Save:
-
-```text
-09-controller-chain.png
-```
+Save as `13-generated-resources.png`.
 
 ## Crop and size
 
 Keep each image smaller than 1.5 MB. Keep text readable at GitHub page width.
 
-On macOS, resize a large image with:
-
-```bash
-sips -Z 1800 docs/assets/one-click-llm-deployment/01-gpu-preflight.png
-```
-
-Crop empty terminal space. Do not stretch an image.
-
-## Add images to the workshop page
-
-Use descriptive alternative text:
-
-```markdown
-![OpenEverest Qwen model selector backed by provider-kserve](assets/one-click-llm-deployment/04-ui-model-selector.png)
-```
-
-Do not use `screenshot`, `image`, or a file name as alternative text.
+Crop unused browser chrome and empty terminal space. Preserve headings and field labels.
 
 ## Final check
 
-Run:
-
 ```bash
-find docs/assets/one-click-llm-deployment -name '*.png' -size +1500k -print
-git diff --check
+find docs/assets/one-click-llm-deployment/screenshots \
+  -maxdepth 1 \
+  -type f \
+  -name '*.png' \
+  -print | sort
 ```
 
-The first command must print no files.
+Expected result: 13 PNG files.
 
-Open every image from the rendered workshop page before publishing.
-
-Final approval rests with the writer.
+Final visual approval rests with the workshop owner.

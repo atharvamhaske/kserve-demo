@@ -1,0 +1,16 @@
+env:
+  - name: OPENAI_API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: CHAT_CREDENTIALS_SECRET
+        key: password
+  - name: OPENAI_BASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: CHAT_CREDENTIALS_SECRET
+        key: uri
+  - name: OPENAI_MODEL
+    valueFrom:
+      secretKeyRef:
+        name: CHAT_CREDENTIALS_SECRET
+        key: model

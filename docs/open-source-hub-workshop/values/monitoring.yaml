@@ -1,0 +1,15 @@
+alertmanager:
+  enabled: false
+grafana:
+  enabled: true
+kubeStateMetrics:
+  enabled: false
+nodeExporter:
+  enabled: false
+prometheus:
+  prometheusSpec:
+    retention: 2h
+    scrapeInterval: 15s
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
