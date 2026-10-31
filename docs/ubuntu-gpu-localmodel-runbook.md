@@ -1,17 +1,27 @@
 # Ubuntu GPU LocalModel cache runbook
 Use this runbook to test [provider-kserve PR #117](https://github.com/openeverest/provider-kserve/pull/117) on one native Ubuntu NVIDIA GPU host.
+
 PR #117 is unreleased. Build its provider image and install its local chart from the contributor branch. Do not use released artifacts.
+
+Complete the [Ubuntu GPU workshop prerequisites](ubuntu-gpu-workshop-prerequisites.md) before this runbook.
+
 ## 1. Confirm scope and risks
-Use a disposable, single-user lab. LocalModel node-agent RBAC can read Secrets and ServiceAccounts and manage Jobs cluster-wide.
+
+Use a disposable, single-user lab. The LocalModel node-agent RBAC can read Secrets and ServiceAccounts and manage Jobs cluster-wide.
+
 Known risks:
+
 - The LocalModel APIs are `v1alpha1`.
 - `modelSize` reserves capacity. It does not limit downloaded bytes.
 - Cache disable and URI changes recreate the model workload.
-- Chart disable with an enabled Instance cache is a known PR bug and does not cleanly recreate. Disable every cache first.
-- Cache status does not gate Instance readiness.
+- Chart disable with an enabled Instance cache is a known PR bug. Disable every cache first.
+- The provider currently creates the LLM workload before cache readiness. This runbook waits for cache `1/1` before it evaluates serving readiness.
+- KServe v0.21.0 does not render the advertised node-agent user. This runbook applies an explicit UID and group.
+- KServe does not propagate the download group to serving Pods. This runbook adds `fsGroup: 1000`.
 - The PR wizard check is incomplete. This runbook uses YAML.
-- Official pages show KServe v0.20. PR #117 pins v0.21.0 and tests LLMInferenceService matching.
-This host has one NVIDIA H100 and 40 Mbps Wi-Fi. A 1.4 GiB transfer has a theoretical five-minute minimum. Seven to twelve minutes is realistic. A 7B or 8B model can take over one hour. This uses `Qwen/Qwen3-0.6B`, a 90-minute runtime-image gate, 30-minute model gates, and no MIG assumptions.
+
+The verified host has one RTX PRO 6000 Blackwell GPU. The runbook uses `Qwen/Qwen3-0.6B`, a 90-minute runtime-image gate, and 30-minute model gates.
+
 Gate: Continue only on a disposable cluster with no other users or workloads.
 ## 2. Set variables
 Use one shell unless stated otherwise.
@@ -27,16 +37,25 @@ export IMAGE_REPO=provider-kserve-pr117
 ```
 Gate: `printf '%s\n' "$PROFILE $INSTANCE $MODEL_URI"` prints the selected values.
 ## 3. Check Ubuntu, GPU, Docker, and NVIDIA toolkit
+
 ```bash
 . /etc/os-release; printf 'OS=%s %s\n' "$ID" "$VERSION_ID"
 uname -m; systemd-detect-virt || true
+nproc
+free -h
+df -h /
 nvidia-smi
 docker version
 docker info --format '{{json .Runtimes}}'
 docker run --rm --gpus all ubuntu:24.04 nvidia-smi
+minikube version --short
+kubectl version --client=true
+helm version --short
 ```
-This targets native Ubuntu on `x86_64`. Stop for `wsl`. If Docker GPU access fails, use the official NVIDIA guide below.
-Gate: Host and container output list the H100. Docker shows a server and NVIDIA runtime support.
+
+This runbook targets native Ubuntu on `x86_64`. Stop if `systemd-detect-virt` reports `wsl`.
+
+Gate: Host and container output list the same NVIDIA GPU. At least 60 GiB disk space is free.
 ## 4. Create or reuse the GPU Minikube cluster
 The official Minikube NVIDIA procedure requires `net.core.bpf_jit_harden=0` with the Docker driver.
 ```bash
@@ -112,26 +131,40 @@ helm upgrade --install provider-kserve "$REPO_DIR/charts/provider-kserve" \
   --set kserveResources.kserve.localmodel.jobNamespace="$JOB_NS" --wait --timeout 30m
 ```
 Gate: Helm deploys the local chart. `printf '%s\n' "$PROVIDER_COMMIT"` records its commit.
-## 7. Verify LocalModel components
+## 7. Verify and fix LocalModel component identities
+
+KServe v0.21.0 declares a node-agent `runAsUser` value but does not render it. Apply the explicit cache identity after every Helm upgrade.
+
 ```bash
 kubectl get crd localmodelcaches.serving.kserve.io \
   localmodelnamespacecaches.serving.kserve.io \
   localmodelnodegroups.serving.kserve.io localmodelnodes.serving.kserve.io
 kubectl -n "$PROVIDER_NS" rollout status deployment/kserve-localmodel-controller-manager --timeout=30m
-kubectl -n "$PROVIDER_NS" rollout status daemonset/kserve-localmodelnode-agent --timeout=30m
+kubectl -n "$PROVIDER_NS" patch daemonset kserve-localmodelnode-agent --type=merge \
+  -p '{"spec":{"template":{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":1000,"runAsGroup":1000,"fsGroup":1000,"seccompProfile":{"type":"RuntimeDefault"}}}}}}'
 kubectl get namespace "$JOB_NS"
 kubectl -n "$PROVIDER_NS" get deployment provider-kserve \
   -o jsonpath='{.spec.template.spec.containers[?(@.name=="provider")].image}{"\n"}'
+kubectl -n "$PROVIDER_NS" get daemonset kserve-localmodelnode-agent \
+  -o jsonpath='{.spec.template.spec.securityContext}{"\n"}'
 kubectl get provider provider-kserve
 ```
-Gate: Four CRDs exist, both rollouts finish, the job namespace exists, and the image is `provider-kserve-pr117:$IMAGE_TAG`.
+
+Gate: Four CRDs exist. The node-agent security context contains UID, GID, and fsGroup `1000`.
 ## 8. Prepare cache storage
+
+Get the exact host path from the live DaemonSet. Prepare it before the node-agent starts.
+
 ```bash
 export LOCAL_MODEL_HOST_PATH=$(kubectl -n "$PROVIDER_NS" get daemonset kserve-localmodelnode-agent \
   -o jsonpath='{.spec.template.spec.volumes[?(@.name=="models")].hostPath.path}')
 printf 'LocalModel hostPath: %s\n' "$LOCAL_MODEL_HOST_PATH"
+minikube -p "$PROFILE" ssh -- \
+  "sudo install -d -o root -g 1000 -m 2775 '$LOCAL_MODEL_HOST_PATH' '$LOCAL_MODEL_HOST_PATH/models'"
 kubectl label node "$PROFILE" kserve/localmodel=worker --overwrite
 kubectl -n "$PROVIDER_NS" rollout status daemonset/kserve-localmodelnode-agent --timeout=30m
+minikube -p "$PROFILE" ssh -- \
+  "ls -ldn '$LOCAL_MODEL_HOST_PATH' '$LOCAL_MODEL_HOST_PATH/models'"
 kubectl apply -f - <<EOF
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
@@ -154,7 +187,8 @@ spec:
 EOF
 kubectl get localmodelnodegroup "$NODE_GROUP" -o yaml
 ```
-Gate: The agent is ready. The node group has 20 GiB and the live DaemonSet host path.
+
+Gate: The directories are `root:1000`, group-writable, and setgid. The node agent is ready.
 ## 9. Pre-pull runtime and create the Instance
 Pre-pull vLLM so replacement timing excludes image transfer.
 ```bash
@@ -181,15 +215,33 @@ spec:
         tensorParallelSize: 1
         localModelCache: {enabled: enabled, modelSize: 3Gi, nodeGroup: ${NODE_GROUP}}
         config: |
-          template: {containers: [{name: main, args: [--enforce-eager, --max-model-len=2048, --max-num-seqs=1, --gpu-memory-utilization=0.2]}]}
+          template:
+            securityContext:
+              fsGroup: 1000
+            containers:
+              - name: main
+                args:
+                  - --enforce-eager
+                  - --max-model-len=2048
+                  - --max-num-seqs=1
+                  - --gpu-memory-utilization=0.2
 EOF
 ```
-Do not set `disableStorageInitializer`. In terminal 2, run `kubectl -n kserve-localmodel-jobs get jobs,pods,pvc -w`.
+
+Do not set `disableStorageInitializer`. In terminal 2, run this watch:
+
+```bash
+kubectl -n "$JOB_NS" get jobs,pods,pvc -w
+```
+
+Wait for the cache before you evaluate model readiness:
+
 ```bash
 timeout 30m bash -c 'until [ "$(kubectl -n "$INSTANCE_NS" get localmodelnamespacecache "$INSTANCE" -o jsonpath="{.status.copies.available}/{.status.copies.total}" 2>/dev/null)" = "1/1" ]; do sleep 10; done'
 kubectl -n "$INSTANCE_NS" get localmodelnamespacecache "$INSTANCE" -o yaml
 ```
-Gate: The image exists, a download Job completes, and cache copies report `1/1` without failures.
+
+Gate: The download Job completes. Cache copies report `1/1` with no failed copy.
 ## 10. Verify admission and readiness
 Wait for a Pod before assigning `MODEL_POD`.
 ```bash
@@ -200,24 +252,38 @@ kubectl get pv; kubectl get localmodelnode -o yaml
 kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" \
   -o jsonpath='{.metadata.labels.internal\.serving\.kserve\.io/localmodel}{" "}{.metadata.labels.internal\.serving\.kserve\.io/localmodel-namespace}{"\n"}'
 kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" \
-  -o jsonpath='{.spec.volumes[*].persistentVolumeClaim.claimName}{"\n"}{.spec.initContainers[*].name}{"\n"}{.spec.containers[?(@.name=="main")].resources.limits.nvidia\.com/gpu}{"\n"}{.spec.containers[?(@.name=="main")].image}{"\n"}'
+  -o jsonpath='{.spec.securityContext}{"\n"}{.spec.volumes[*].persistentVolumeClaim.claimName}{"\n"}{.spec.initContainers[*].name}{"\n"}{.spec.containers[?(@.name=="main")].resources.limits.nvidia\.com/gpu}{"\n"}{.spec.containers[?(@.name=="main")].image}{"\n"}'
 kubectl -n "$INSTANCE_NS" wait --for=condition=Ready pod/"$MODEL_POD" --timeout=30m
 kubectl -n "$INSTANCE_NS" exec "$MODEL_POD" -c main -- nvidia-smi
-kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" -o jsonpath='{.status.state}{" "}{.status.message}{"\n"}'
+kubectl -n "$INSTANCE_NS" exec "$MODEL_POD" -c main -- \
+  sh -c 'id; test -r /mnt/models/config.json; echo model-config-readable'
+kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" \
+  -o jsonpath='{.status.phase}{" "}{.status.message}{"\n"}'
 ```
-Gate: Labels name `qwen-demo` and `default`; PVC/PV exist; no `storage-initializer` exists; GPU limit is `1`; and Instance is ready.
-## 11. Call both APIs
+
+Gate: The Pod has fsGroup `1000`, the model config is readable, and the Instance phase is `Ready`.
+
+## 11. Call both APIs and show telemetry
+
 In terminal 2:
+
 ```bash
 kubectl --context "$PROFILE" -n "$INSTANCE_NS" port-forward svc/${INSTANCE}-kserve-workload-svc 8000:8000
 ```
+
+In terminal 1:
+
 ```bash
 curl --fail-with-body http://localhost:8000/v1/models
 curl --fail-with-body http://localhost:8000/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"qwen3-0.6b","messages":[{"role":"user","content":"Reply with one short sentence. /no_think"}],"chat_template_kwargs":{"enable_thinking":false},"max_tokens":64,"temperature":0.2}'
+  -d '{"model":"qwen3-0.6b","messages":[{"role":"user","content":"In two short sentences, explain why model caching reduces cold-start latency."}],"chat_template_kwargs":{"enable_thinking":false},"max_tokens":96,"temperature":0}'
+curl --fail-with-body http://localhost:8000/metrics | \
+  grep -E '^(vllm:(num_requests_running|num_requests_waiting|kv_cache_usage_perc|prompt_tokens_total|generation_tokens_total|request_success_total|time_to_first_token_seconds_(count|sum)|e2e_request_latency_seconds_(count|sum))|http_requests_total)'
+nvidia-smi
 ```
-Gate: The model list contains `qwen3-0.6b`, and chat returns a completion.
+
+Gate: The model list contains `qwen3-0.6b`, chat returns a completion, and metrics contain the request.
 ## 12. Delete the Pod and prove reuse
 ```bash
 kubectl -n "$JOB_NS" get jobs -o name | sort >"$HOME/pr117-jobs-before.txt"
@@ -266,16 +332,20 @@ Warning: This optional command permanently deletes the cluster, images, and data
 minikube delete -p "$PROFILE"
 ```
 ## Troubleshooting
+
 | Symptom | Check | Action |
 |---|---|---|
-| No GPU | Host, Docker, sysctl, node capacity | Fix before recreating Minikube. Do not assume MIG. |
-| Repeated Jobs | DaemonSet `hostPath`, group `local.path` | Recreate with the live path. Check write access. |
-| Download `OOMKilled` | Download Pod | Confirm chart limit `4Gi`. Increase host memory. |
-| Cache at `0/1` | Jobs, PVC/PV, node, controllers | Fix labels, binding, disk, permissions, or access. Allow 30 minutes. |
-| Provider rejects Instance | Instance and provider logs | Use `enabled`, `3Gi`, valid group, no `disableStorageInitializer`, and chart flag. |
-| Model Pod fails | Pod and `main` logs | Check image, GPU, memory, PVC, and arguments. |
-| Chart disable stalls | Instance, service, cache, provider | Re-enable. Disable every Instance cache before chart disable. |
-| Ready while preparing | `.status.message`, `.status.copies` | Require `available == total`. |
+| No GPU | Host, Docker, sysctl, node capacity | Fix the host before you recreate Minikube. |
+| Repeated Jobs | DaemonSet `hostPath`, node group `local.path` | Use the same path. Check parent directory access. |
+| Download reports `Permission denied` | Cache path owner and mode | Repeat step 8. The parent must be `root:1000` and group-writable. |
+| Download is `OOMKilled` | Download Pod | Confirm the chart memory limit is `4Gi`. |
+| Cache remains `0/1` | Jobs, PVC, PV, node, controllers | Check labels, binding, disk, permissions, and model access. |
+| Cache remains failed after a successful Job | Node-agent logs and identity | Repeat step 7. A Helm upgrade can remove the live patch. |
+| vLLM reports invalid `/mnt/models` | `id` and `test -r /mnt/models/config.json` | Confirm the serving Pod has fsGroup `1000`. |
+| Provider rejects the Instance | Instance and provider logs | Use `enabled`, `3Gi`, a valid group, and no `disableStorageInitializer`. |
+| Model Pod fails after cache `1/1` | Pod events and `main` logs | Check the runtime image, GPU, memory, PVC, and arguments. |
+| Chart disable stalls | Instance, service, cache, provider | Re-enable the chart. Disable every Instance cache first. |
+| Instance starts while cache prepares | `.status.message`, `.status.copies` | Wait for `available == total` before evaluating serving readiness. |
 ## Evidence bundle
 Run before cleanup. Save output with Job lists and replacement readiness.
 ```bash
@@ -283,17 +353,23 @@ printf 'provider_commit=%s bpf_original=%s\n' "$PROVIDER_COMMIT" "$ORIGINAL_BPF_
 minikube version; kubectl version; helm list -A
 kubectl get nodes -o wide; kubectl get crd | grep localmodel
 kubectl -n "$PROVIDER_NS" get deployment,daemonset,pod -o wide
-kubectl -n "$PROVIDER_NS" get deployment provider-kserve -o jsonpath='{.spec.template.spec.containers[?(@.name=="provider")].image}{"\n"}'
+kubectl -n "$PROVIDER_NS" get daemonset kserve-localmodelnode-agent \
+  -o jsonpath='{.spec.template.spec.securityContext}{"\n"}'
+kubectl -n "$PROVIDER_NS" get deployment provider-kserve \
+  -o jsonpath='{.spec.template.spec.containers[?(@.name=="provider")].image}{"\n"}'
 kubectl get localmodelnodegroup,localmodelnode,pv -o wide
 kubectl -n "$JOB_NS" get jobs,pods,pvc -o wide
 kubectl -n "$INSTANCE_NS" get instance,llminferenceservice,localmodelnamespacecache,pod,svc -o wide
 kubectl -n "$INSTANCE_NS" get localmodelnamespacecache "$INSTANCE" -o yaml
 kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" -o yaml
 kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" -o yaml
+kubectl -n "$INSTANCE_NS" logs "$MODEL_POD" -c main --tail=300
+kubectl -n "$INSTANCE_NS" exec "$MODEL_POD" -c main -- curl -fsS http://127.0.0.1:8000/metrics
 kubectl -n "$PROVIDER_NS" logs deployment/provider-kserve --tail=200
 kubectl -n "$PROVIDER_NS" logs deployment/kserve-localmodel-controller-manager --tail=200
 kubectl -n "$PROVIDER_NS" logs daemonset/kserve-localmodelnode-agent --tail=200
 ```
+
 ## Primary sources
 - [PR #117](https://github.com/openeverest/provider-kserve/pull/117), [branch](https://github.com/atharvamhaske/provider-kserve/tree/feat/localmodel-cache), and [issue #108](https://github.com/openeverest/provider-kserve/issues/108)
 - [KServe LocalModel](https://kserve.github.io/website/docs/model-serving/generative-inference/modelcache/localmodel) and [installation](https://kserve.github.io/website/docs/install/localmodel-install)
