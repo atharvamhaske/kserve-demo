@@ -1,0 +1,21 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//OpenEverest//Open Source Hub Workshop//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:one-click-llm-deployment-20261106@openeverest.io
+DTSTAMP:20261031T000000Z
+DTSTART:20261106T133000
+DTEND:20261106T141500
+SUMMARY:One-Click LLM Deployment on Kubernetes
+ : Hands-On with OpenEverest and KServe
+LOCATION:Open Source Hub
+DESCRIPTION:Apply one OpenEverest Instance. provider-kserve turns it into a
+  KServe model server with an OpenAI API.
+CATEGORIES:Workshop,Kubernetes,LLM,Open Source
+STATUS:CONFIRMED
+URL:https://github.com/atharvamhaske/kserve-demo/blob/main/docs/
+ one-click-llm-deployment-workshop.md
+END:VEVENT
+END:VCALENDAR

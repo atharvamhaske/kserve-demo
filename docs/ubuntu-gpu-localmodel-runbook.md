@@ -326,7 +326,18 @@ curl --fail-with-body http://localhost:8000/v1/chat/completions \
   -H 'Content-Type: application/json' --data-binary "@$REQUEST_FILE"
 rm -f "$REQUEST_FILE"
 curl --fail-with-body http://localhost:8000/metrics | \
-  grep -E '^(vllm:(num_requests_running|num_requests_waiting|kv_cache_usage_perc|prompt_tokens_total|generation_tokens_total|request_success_total|time_to_first_token_seconds_(count|sum)|e2e_request_latency_seconds_(count|sum))|http_requests_total)'
+  grep -F \
+    -e 'vllm:num_requests_running' \
+    -e 'vllm:num_requests_waiting' \
+    -e 'vllm:kv_cache_usage_perc' \
+    -e 'vllm:prompt_tokens_total' \
+    -e 'vllm:generation_tokens_total' \
+    -e 'vllm:request_success_total' \
+    -e 'vllm:time_to_first_token_seconds_count' \
+    -e 'vllm:time_to_first_token_seconds_sum' \
+    -e 'vllm:e2e_request_latency_seconds_count' \
+    -e 'vllm:e2e_request_latency_seconds_sum' \
+    -e 'http_requests_total'
 nvidia-smi
 ```
 
@@ -347,9 +358,17 @@ OLD_UID="$OLD_UID" timeout 30m bash -c 'until pod=$(kubectl -n "$INSTANCE_NS" ge
 MODEL_POD=$(kubectl -n "$INSTANCE_NS" get pod -l internal.serving.kserve.io/localmodel="$INSTANCE" -o jsonpath='{.items[0].metadata.name}')
 kubectl -n "$INSTANCE_NS" wait --for=condition=Ready pod/"$MODEL_POD" --timeout=30m
 REUSE_END=$(date +%s)
+NEW_UID=$(kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" -o jsonpath='{.metadata.uid}')
+printf 'Old Pod UID: %s\n' "$OLD_UID"
+printf 'New Pod UID: %s\n' "$NEW_UID"
 printf 'Replacement readiness: %s seconds\n' "$((REUSE_END-REUSE_START))"
 kubectl -n "$JOB_NS" get jobs -o name | sort >"$JOB_LIST_AFTER"
-diff -u "$JOB_LIST_BEFORE" "$JOB_LIST_AFTER"
+if diff -u "$JOB_LIST_BEFORE" "$JOB_LIST_AFTER"; then
+  printf 'New download Jobs: none\n'
+else
+  printf 'The replacement created a download Job.\n' >&2
+  exit 1
+fi
 rm -f "$JOB_LIST_BEFORE" "$JOB_LIST_AFTER"
 ```
 Gate: UID changes, `diff` is empty, readiness is measured, and chat still works.
