@@ -17,8 +17,8 @@ Open four terminal windows:
 | Terminal | Role |
 |---|---|
 | 1 | Run the main runbook commands. |
-| 2 | Watch Jobs, Pods, and PVCs. |
-| 3 | Run the model Service port-forward. |
+| 2 | Watch cache resources, then run the model Service port-forward. |
+| 3 | Run the OpenEverest UI port-forward. |
 | 4 | Call APIs and show telemetry. |
 
 Set the terminal font to at least 18 points. Use a dark background and high-contrast text.
@@ -94,7 +94,27 @@ Save the image as:
 
 Do not capture the OpenEverest password command.
 
-## Capture 4: LocalModel cache
+## Capture 4: OpenEverest model selector
+
+Use the browser during runbook step 9.
+
+Open Instances and start a new `llm` Instance with `provider-kserve`.
+
+Open the Model selector. Keep the model list visible with `Qwen3 0.6B` selected.
+
+Include the Instance name, Provider, Topology, and Model fields in the image.
+
+Take the image before you click Create.
+
+Save the image as:
+
+```text
+04-ui-model-selector.png
+```
+
+Do not capture the login form, admin password, public host, or SSH command.
+
+## Capture 5: LocalModel cache
 
 Use terminal 2 after runbook step 9.
 
@@ -114,10 +134,10 @@ Include the cache, Job, PVC, and PV in the image.
 Save the image as:
 
 ```text
-04-localmodel-cache.png
+05-localmodel-cache.png
 ```
 
-## Capture 5: Ready OpenEverest Instance
+## Capture 6: Ready OpenEverest Instance
 
 Use terminal 1 after runbook step 10.
 
@@ -138,12 +158,12 @@ Take the image after `model-config-readable` appears.
 Save the image as:
 
 ```text
-05-instance-ready.png
+06-instance-ready.png
 ```
 
-## Capture 6: OpenAI-compatible API
+## Capture 7: OpenAI-compatible API
 
-Keep the port-forward running in terminal 3.
+Keep the model Service port-forward running in terminal 2.
 
 Use terminal 4 after runbook step 11.
 
@@ -164,10 +184,10 @@ Do not include unrelated shell history.
 Save the image as:
 
 ```text
-06-openai-api.png
+07-openai-api.png
 ```
 
-## Capture 7: vLLM metrics and GPU
+## Capture 8: vLLM metrics and GPU
 
 Use terminal 4 immediately after the chat request.
 
@@ -192,10 +212,10 @@ Include both the metrics and GPU process.
 Save the image as:
 
 ```text
-07-vllm-metrics.png
+08-vllm-metrics.png
 ```
 
-## Capture 8: Cache reuse
+## Capture 9: Cache reuse
 
 Use terminal 1 during runbook step 12.
 
@@ -215,7 +235,7 @@ When the response succeeds, click the terminal window. Include the UIDs, Job res
 Save the image as:
 
 ```text
-08-cache-reuse.png
+09-cache-reuse.png
 ```
 
 ## Crop and size
@@ -239,7 +259,7 @@ Add each image after the matching blog section.
 Use descriptive alternative text:
 
 ```markdown
-![KServe LocalModel cache with one available copy](assets/one-click-llm-deployment/04-localmodel-cache.png)
+![KServe LocalModel cache with one available copy](assets/one-click-llm-deployment/05-localmodel-cache.png)
 ```
 
 Do not use `screenshot`, `image`, or a file name as alternative text.

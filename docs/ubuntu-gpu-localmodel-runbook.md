@@ -22,7 +22,6 @@ Known risks:
 - The provider creates the workload before cache readiness. Wait for cache `1/1` before you check model readiness.
 - KServe 0.21.0 does not render the configured node-agent user. Apply an explicit UID and group.
 - KServe does not propagate the download group to serving Pods. Add the configured fsGroup.
-- The PR wizard check is incomplete. Use YAML.
 
 The verified host has one RTX PRO 6000 Blackwell GPU.
 
@@ -232,49 +231,94 @@ kubectl get localmodelnodegroup "$NODE_GROUP" -o yaml
 ```
 
 Gate: The directories use the configured group. They are group-writable and setgid. The node agent is ready.
-## 9. Pre-pull runtime and create the Instance
+## 9. Pre-pull runtime and create the Instance in the UI
+
 Pre-pull vLLM so replacement timing excludes image transfer.
+
 ```bash
 timeout 90m minikube -p "$PROFILE" image pull "$RUNTIME_IMAGE"
 minikube -p "$PROFILE" ssh -- docker image inspect "$RUNTIME_IMAGE" --format '{{.RepoTags}} {{.Size}}'
-kubectl -n "$INSTANCE_NS" apply -f - <<EOF
-apiVersion: core.openeverest.io/v1alpha1
-kind: Instance
-metadata: {name: ${INSTANCE}}
-spec:
-  providerRef: {name: provider-kserve}
-  topology: {type: llm}
-  components:
-    llmEngine:
-      type: vllm
-      replicas: 1
-      resources: {limits: {cpu: "${MODEL_CPU_LIMIT}", memory: ${MODEL_MEMORY_LIMIT}}}
-      service: {serviceType: ClusterIP}
-      parameters:
-        modelURI: ${MODEL_URI}
-        modelName: ${MODEL_NAME}
-        computeProfile: gpu
-        gpuCount: 1
-        tensorParallelSize: 1
-        localModelCache: {enabled: enabled, modelSize: ${MODEL_SIZE}, nodeGroup: ${NODE_GROUP}}
-        config: |
-          template:
-            securityContext:
-              fsGroup: ${LOCAL_MODEL_GID}
-            containers:
-              - name: main
-                args:
-                  - --enforce-eager
-                  - --max-model-len=${MODEL_MAX_LENGTH}
-                  - --max-num-seqs=${MODEL_MAX_SEQUENCES}
-                  - --gpu-memory-utilization=${GPU_MEMORY_UTILIZATION}
-EOF
 ```
 
-Do not set `disableStorageInitializer`. In terminal 2, run this watch:
+In terminal 2, watch the cache resources:
 
 ```bash
 kubectl -n "$JOB_NS" get jobs,pods,pvc -w
+```
+
+In terminal 3, expose the OpenEverest UI:
+
+```bash
+kubectl --context "$PROFILE" -n "$EVEREST_NS" \
+  port-forward svc/everest 8080:8080
+```
+
+If the GPU host is remote, forward port 8080 from the presentation computer:
+
+```text
+ssh -N -i <ssh-key> \
+  -o IdentitiesOnly=yes \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -L 127.0.0.1:8080:127.0.0.1:8080 \
+  ubuntu@<gpu-host>
+```
+
+Open `http://localhost:8080`. Log in as `admin` with the password from step 5.
+
+Open Instances and start a new Instance. Select these values:
+
+| Section | Field | Value |
+|---|---|---|
+| Instance | Namespace | `default` |
+| Instance | Name | `qwen-demo` |
+| Instance | Provider | `provider-kserve` |
+| Instance | Topology | `llm` |
+| Basic Information | Model | `Qwen3 0.6B` |
+| Basic Information | Image pull secret | Empty |
+| Basic Information | Served Model Name | `qwen3-0.6b` |
+| Basic Information | vLLM Runtime Version | Keep the provided default |
+| Scaling & Parallelism | Replicas | `1` |
+| Scaling & Parallelism | Autoscaling | Off |
+| Scaling & Parallelism | Tensor parallel size | `1` |
+| Scaling & Parallelism | Pipeline parallel size | `1` |
+| Scaling & Parallelism | Data parallel size | `1` |
+| Scaling & Parallelism | Multi-node workers | Off |
+| Runtime | Compute Profile | GPU |
+| Runtime | GPUs per pod | `1` |
+| Runtime | CPU | `2` |
+| Runtime | Memory | `6` GiB |
+| Model Cache | Enable model cache | Enabled |
+| Model Cache | Model size | `3` GiB |
+| Model Cache | LocalModelNodeGroup | `model-workers` |
+| Model Cache | Download service account | Empty |
+| Engine Tuning | Max context length | `2048` |
+| Engine Tuning | Max concurrent sequences | `1` |
+| Engine Tuning | GPU memory utilization | `0.2` |
+| Routing | External access | `ClusterIP` |
+| Observability | vLLM Prometheus metrics | On |
+| Observability | Distributed tracing | Off |
+
+Add this Advanced configuration:
+
+```yaml
+template:
+  securityContext:
+    fsGroup: 1000
+  containers:
+    - name: main
+      args:
+        - --enforce-eager
+```
+
+Do not set `disableStorageInitializer`. Click Create.
+
+Confirm that the UI created the configured Instance:
+
+```bash
+timeout 5m bash -c 'until kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" >/dev/null 2>&1; do sleep 5; done'
+kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" \
+  -o jsonpath='{.metadata.name}{" "}{.spec.components.llmEngine.parameters.modelURI}{"\n"}'
 ```
 
 Wait for the cache before you evaluate model readiness:
@@ -284,7 +328,7 @@ timeout 30m bash -c 'until [ "$(kubectl -n "$INSTANCE_NS" get localmodelnamespac
 kubectl -n "$INSTANCE_NS" get localmodelnamespacecache "$INSTANCE" -o yaml
 ```
 
-Gate: The download Job completes. Cache copies report `1/1` with no failed copy.
+Gate: The UI creates `qwen-demo`. The download Job completes. Cache copies report `1/1` with no failed copy.
 ## 10. Verify admission and readiness
 Wait for a Pod before assigning `MODEL_POD`.
 ```bash
