@@ -4,6 +4,28 @@ This module creates one GPU model, one HTTPS endpoint, and one API key per appli
 
 The live story stays in the OpenEverest UI. The checked-in scripts prepare and verify the platform.
 
+## Start here
+
+| Need | Open |
+|---|---|
+| Run the live workshop | [Fast operator path](#fast-operator-path) |
+| Decide between a preset, custom UI, and YAML | [Model creation and parallelism guide](model-configuration-guide.md) |
+| Explain tensor, pipeline, data, expert, and replica scaling | [Parallelism starts with the problem](model-configuration-guide.md#parallelism-starts-with-the-problem) |
+| Understand checked-in manifests | [Manifest folder guide](manifests/README.md) |
+| Operate the scripts | [Script folder guide](scripts/README.md) |
+| Call the model API | [Client folder guide](clients/README.md) |
+| Verify technical claims | [Release and source evidence](release-sources.md) |
+
+## Presenter decision
+
+Use the `kserve-qwen-demo-gateway` preset card for the live demo.
+
+Open Start from scratch only as an unsaved teaching view. Use `qwen-demo-terminal.yaml` only for an automated rehearsal.
+
+The rule for attendees is simple:
+
+> Use a preset for an approved repeated setup. Use Start from scratch for exploration. Use an `Instance` manifest for automation and review.
+
 ## What the audience sees
 
 1. Create `qwen-demo` from an OpenEverest preset.
@@ -29,14 +51,18 @@ The workshop module is self-contained:
 ```text
 open-source-hub-workshop/
 ├── README.md
+├── model-configuration-guide.md
 ├── release-sources.md
 ├── clients/
+│   ├── README.md
 │   └── go/
 │       ├── go.mod
 │       └── main.go
 ├── config/
+│   ├── README.md
 │   └── workshop.env
 ├── manifests/
+│   ├── README.md
 │   ├── application-env.example.yaml
 │   ├── demo-valkey.yaml
 │   ├── instancepreset-qwen-demo-gateway.yaml
@@ -44,6 +70,7 @@ open-source-hub-workshop/
 │   ├── qwen-demo-terminal.yaml
 │   └── selfsigned-clusterissuer.yaml
 ├── scripts/
+│   ├── README.md
 │   ├── workshop.sh
 │   ├── 00-preflight.sh
 │   ├── 10-create-cluster.sh
@@ -54,6 +81,7 @@ open-source-hub-workshop/
 │   ├── 50-open-ui.sh
 │   └── 90-cleanup.sh
 └── values/
+    ├── README.md
     ├── monitoring.yaml
     └── provider-kserve.yaml
 ```
@@ -194,6 +222,7 @@ The KServe endpoint picker is not Agent Router. It selects a healthy vLLM endpoi
 | provider-kserve | `0.5.0` |
 | plugin-user-management | `0.2.0` |
 | KServe | `0.21.0` |
+| vLLM | `0.26.0` |
 | Envoy Gateway | `v1.9.2` |
 | Envoy AI Gateway / Agent Router | `v1.2.0` |
 | Gateway API | `v1.6` |
@@ -248,6 +277,12 @@ kubectl get instancepreset kserve-qwen-demo-gateway -o yaml
 The two provider defaults do not enable Envoy AI Gateway. They cannot demonstrate per-application keys.
 
 OpenEverest does not store a `presetRef` in an Instance. The UI resolves a preset and submits a complete Instance spec. The annotation records which preset supplied the spec.
+
+For the live demo, select `kserve-qwen-demo-gateway`. Open the manual form only to explain fields, then close it without creating a second model.
+
+Use [qwen-demo-terminal.yaml](manifests/qwen-demo-terminal.yaml) for CI, GitOps, or automated rehearsal.
+
+Read the [model creation and parallelism guide](model-configuration-guide.md) for the full decision table and attendee answers.
 
 ## HTTPS modes
 
@@ -349,7 +384,7 @@ Selecting a preset disables Configure more options. This is intentional for the 
 
 ## 2. Manual UI path
 
-Use this path when teaching every selector.
+Use this as an alternative creation method or as an unsaved teaching view.
 
 Select Start from scratch, then Configure more options.
 
@@ -391,7 +426,11 @@ Set the model form:
 | Scheduling | Pod scheduling policy | Off |
 | Advanced | LLMInferenceServiceConfig | Empty |
 
-Review the form and select Create.
+If this method replaces the preset path, review the form and select Create. During the recommended demo, close this form without submitting it.
+
+Keep every parallel size at `1` for this model. It fits on one GPU, so distributed inference adds complexity without solving a capacity problem.
+
+For larger models, read [Parallelism starts with the problem](model-configuration-guide.md#parallelism-starts-with-the-problem) before changing these fields.
 
 ## 3. Terminal model alternative
 
@@ -689,7 +728,7 @@ Do not print Secret data on screen.
 |---|---|---|
 | 0:00-0:05 | Outcome, folder tree, component flow | One repository contains the operator and consumer paths. |
 | 0:05-0:10 | Helm release table | provider-kserve installs KServe and both Envoy components. |
-| 0:10-0:18 | Preset-based UI creation | One preset defines the model, GPU, Gateway, quota, and metrics. |
+| 0:10-0:18 | Preset creation and alternatives | Use the preset live, show the unsaved custom form, and name YAML as the automation path. |
 | 0:18-0:23 | Readiness and connection details | The provider creates the serving and connection resources. |
 | 0:23-0:29 | Users tab | Each application gets its own generated key and Secret. |
 | 0:29-0:34 | curl and Go | Both clients use Base URL, API key, and Model. |
@@ -746,6 +785,10 @@ The cleanup script deletes the cluster and restores `net.core.bpf_jit_harden`.
 
 ## Related documents
 
+- [Model creation and parallelism guide](model-configuration-guide.md)
+- [Manifest folder guide](manifests/README.md)
+- [Script folder guide](scripts/README.md)
+- [Client folder guide](clients/README.md)
 - [Release and API source evidence](release-sources.md)
 - [Screenshot capture guide](../one-click-llm-deployment-screenshot-guide.md)
 - [Public workshop page](../one-click-llm-deployment-workshop.md)

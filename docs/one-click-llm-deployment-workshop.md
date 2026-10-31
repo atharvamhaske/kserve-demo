@@ -120,6 +120,12 @@ The preset selects:
 
 The provider also installs `kserve-smollm-cpu` and `kserve-qwen-gpu`. Those default presets use ClusterIP and do not demonstrate API keys.
 
+Use the workshop preset for the live demonstration. It keeps the UI story short and guarantees the Gateway, quota, metrics, and one-GPU layout.
+
+Open Start from scratch only as an unsaved teaching view. Use the checked-in `Instance` YAML for CI, GitOps, and automated rehearsal.
+
+The [model creation and parallelism guide](open-source-hub-workshop/model-configuration-guide.md) explains when to use each path and how every parallelism field changes GPU demand.
+
 ## One key per consumer
 
 The model owns one System key for compatibility. Applications use generated keys from the Users tab.
@@ -181,7 +187,7 @@ This demonstration does not prove production readiness, performance, high availa
 |---|---|
 | 0:00-0:05 | Outcome, repository, and architecture |
 | 0:05-0:10 | Installed Helm releases and controller roles |
-| 0:10-0:18 | Preset-based model creation in the UI |
+| 0:10-0:18 | Preset-based UI creation and the YAML alternative |
 | 0:18-0:23 | Readiness and connection details |
 | 0:23-0:29 | Per-application keys in the Users tab |
 | 0:29-0:34 | Curl and Go API consumers |
@@ -192,6 +198,7 @@ This demonstration does not prove production readiness, performance, high availa
 ## Workshop files
 
 - [All-in-one runbook and scripts](open-source-hub-workshop/)
+- [Model creation, parallelism, and attendee answers](open-source-hub-workshop/model-configuration-guide.md)
 - [Release and API source evidence](open-source-hub-workshop/release-sources.md)
 - [Screenshot capture guide](one-click-llm-deployment-screenshot-guide.md)
 
