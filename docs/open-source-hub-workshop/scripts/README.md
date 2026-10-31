@@ -27,3 +27,5 @@ The bootstrap targets Ubuntu 24.04 LTS on `x86_64`. Install the NVIDIA driver, D
 The workshop uses Minikube and does not install kind.
 
 Read the [fast operator path](../README.md#fast-operator-path) for the complete sequence.
+
+Read [UI connection instructions](../README.md#connect-from-the-gpu-host-terminal) before opening OpenEverest or Grafana from another machine. Use the [troubleshooting FAQ](../troubleshooting-faq.md) when a command or connection fails.

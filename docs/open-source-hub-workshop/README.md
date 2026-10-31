@@ -10,7 +10,9 @@ The live story stays in the OpenEverest UI. The checked-in scripts prepare and v
 |---|---|
 | Prepare a fresh GPU host | [Fresh Ubuntu host](#fresh-ubuntu-host) |
 | Run the live workshop | [Fast operator path](#fast-operator-path) |
+| Connect to OpenEverest and Grafana | [Connect from the GPU host terminal](#connect-from-the-gpu-host-terminal) |
 | Record a backup demo | [Record a backup video](#record-a-backup-video) |
+| Fix a workshop problem | [Troubleshooting FAQ](troubleshooting-faq.md) |
 | Decide between a preset, custom UI, and YAML | [Model creation and parallelism guide](model-configuration-guide.md) |
 | Explain tensor, pipeline, data, expert, and replica scaling | [Parallelism starts with the problem](model-configuration-guide.md#parallelism-starts-with-the-problem) |
 | Understand checked-in manifests | [Manifest folder guide](manifests/README.md) |
@@ -56,6 +58,7 @@ The workshop module is self-contained:
 ```text
 open-source-hub-workshop/
 ├── README.md
+├── troubleshooting-faq.md
 ├── model-configuration-guide.md
 ├── release-sources.md
 ├── clients/
@@ -150,7 +153,7 @@ Run:
 
 Bootstrap leaves matching managed tool versions unchanged. If another installation is on `PATH`, it stops instead of replacing it.
 
-The command stops for the OpenEverest admin password. It does not store that password.
+The script does not write the password to a workshop file. Helm stores the supplied value in release metadata. Protect cluster access and Helm release Secrets.
 
 The workshop uses Minikube. It does not install kind because no workshop command uses a kind cluster.
 
@@ -166,7 +169,7 @@ Prepare a host that already has the pinned workshop tools, then install the plat
 ./scripts/workshop.sh prepare
 ```
 
-The command stops for the OpenEverest admin password. It does not store that password.
+The script does not write the password to a workshop file. Helm stores the supplied value in release metadata. Protect cluster access and Helm release Secrets.
 
 ### Terminal 2
 
@@ -186,21 +189,87 @@ Create a local `nip.io` HTTPS endpoint, verify the platform, and open both UIs.
 ./scripts/workshop.sh ui
 ```
 
-Open these URLs.
+### Connect from the GPU host terminal
+
+`./scripts/workshop.sh ui` starts two background `kubectl port-forward` processes on the GPU host:
+
+| UI | GPU-host listener | Kubernetes Service |
+|---|---|---|
+| OpenEverest | `127.0.0.1:8080` | `everest-system/everest:8080` |
+| Grafana | `127.0.0.1:3000` | `monitoring-demo/observability-grafana:80` |
+
+Confirm both listeners from the GPU host:
+
+```bash
+curl --head --silent --show-error http://localhost:8080/
+curl --head --silent --show-error http://localhost:3000/
+```
+
+The launcher stores process IDs and logs here:
+
+```bash
+STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/openeverest-kserve-workshop
+printf 'OpenEverest PID: '; cat "$STATE_DIR/everest.pid"
+printf 'Grafana PID: '; cat "$STATE_DIR/grafana.pid"
+cat "$STATE_DIR/everest.log"
+cat "$STATE_DIR/grafana.log"
+```
+
+On a GPU host with a desktop, open Brave on that host:
 
 - OpenEverest: `http://localhost:8080`.
 - Grafana: `http://localhost:3000`.
 
-For a remote GPU host, run this command on the presenter machine.
+Use the OpenEverest admin password entered during `prepare` or `fresh`.
+
+### Connect from a remote presenter machine
+
+Do not expose ports 8080 or 3000 through a public firewall. Carry both loopback listeners through SSH.
+
+First confirm SSH access:
+
+```bash
+export GPU_HOST=user@gpu-host
+ssh "$GPU_HOST" 'hostname && nvidia-smi --query-gpu=name --format=csv,noheader'
+```
+
+Keep this command running on the presenter machine:
 
 ```bash
 ssh -N \
-  -L 8080:localhost:8080 \
-  -L 3000:localhost:3000 \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=30 \
+  -L 127.0.0.1:8080:127.0.0.1:8080 \
+  -L 127.0.0.1:3000:127.0.0.1:3000 \
   "$GPU_HOST"
 ```
 
-Run API clients on the GPU host when the Minikube Gateway address is private.
+Open Brave on the presenter machine:
+
+- OpenEverest: `http://localhost:8080`.
+- Grafana: `http://localhost:3000`.
+
+If either presenter port is already in use, choose different local ports:
+
+```bash
+ssh -N \
+  -o ExitOnForwardFailure=yes \
+  -L 127.0.0.1:18080:127.0.0.1:8080 \
+  -L 127.0.0.1:13000:127.0.0.1:3000 \
+  "$GPU_HOST"
+```
+
+Then open `http://localhost:18080` and `http://localhost:13000`.
+
+Ctrl-C closes the SSH connection and presenter access. The GPU-host port-forward processes continue until cleanup or manual termination.
+
+### UI traffic versus model API traffic
+
+The SSH forwards carry only OpenEverest and Grafana browser traffic. They do not carry the model's `nip.io` HTTPS endpoint.
+
+Keep `./scripts/workshop.sh tunnel` running for the Gateway address. Run curl and Go clients on the GPU host when that address is private.
+
+Use the [Troubleshooting FAQ](troubleshooting-faq.md) for SSH, port-forward, UI, Gateway, GPU, model, key, quota, and metrics failures.
 
 ## Script command map
 
@@ -892,6 +961,7 @@ Show only HTTP status codes for quota, rotation, and deletion checks.
 Before using the backup, watch the complete MP4 on the presentation laptop. Confirm that audio is clear, text is readable, and no credential appears in any frame.
 
 ## Recovery
+Use the [troubleshooting FAQ](troubleshooting-faq.md) for UI, SSH, cluster, GPU, Gateway, model, API-key, quota, metrics, and cleanup failures.
 
 Check the model:
 
@@ -940,6 +1010,7 @@ The cleanup script deletes the cluster and restores `net.core.bpf_jit_harden`.
 
 ## Related documents
 
+- [Troubleshooting FAQ](troubleshooting-faq.md)
 - [Model creation and parallelism guide](model-configuration-guide.md)
 - [Manifest folder guide](manifests/README.md)
 - [Script folder guide](scripts/README.md)
