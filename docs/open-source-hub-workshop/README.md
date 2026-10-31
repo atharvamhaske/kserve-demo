@@ -8,7 +8,9 @@ The live story stays in the OpenEverest UI. The checked-in scripts prepare and v
 
 | Need | Open |
 |---|---|
+| Prepare a fresh GPU host | [Fresh Ubuntu host](#fresh-ubuntu-host) |
 | Run the live workshop | [Fast operator path](#fast-operator-path) |
+| Record a backup demo | [Record a backup video](#record-a-backup-video) |
 | Decide between a preset, custom UI, and YAML | [Model creation and parallelism guide](model-configuration-guide.md) |
 | Explain tensor, pipeline, data, expert, and replica scaling | [Parallelism starts with the problem](model-configuration-guide.md#parallelism-starts-with-the-problem) |
 | Understand checked-in manifests | [Manifest folder guide](manifests/README.md) |
@@ -41,6 +43,9 @@ The terminal is evidence. The UI is the main story.
 Use a native Ubuntu NVIDIA GPU host. Do not use WSL for this path.
 
 ```bash
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends git
+
 git clone https://github.com/atharvamhaske/kserve-demo.git
 cd kserve-demo/docs/open-source-hub-workshop
 ./scripts/workshop.sh help
@@ -72,6 +77,7 @@ open-source-hub-workshop/
 ├── scripts/
 │   ├── README.md
 │   ├── workshop.sh
+│   ├── bootstrap-host.sh
 │   ├── 00-preflight.sh
 │   ├── 10-create-cluster.sh
 │   ├── 20-install-platform.sh
@@ -86,13 +92,75 @@ open-source-hub-workshop/
     └── provider-kserve.yaml
 ```
 
+## Fresh Ubuntu host
+
+Use Ubuntu 24.04 LTS on an `x86_64` NVIDIA GPU host.
+
+The host owner must install these components first:
+
+- A working NVIDIA driver. `nvidia-smi` must succeed.
+- Docker Engine and NVIDIA Container Toolkit.
+- Docker access for the workshop user after any required logout and login.
+
+The workshop does not automate the NVIDIA driver, Docker daemon, NVIDIA runtime, or Docker group membership. Those changes can affect the kernel, Secure Boot, remote access, and root-level privileges.
+
+Verify the GPU container path before continuing:
+
+```bash
+nvidia-smi
+docker info
+docker run --rm --gpus all ubuntu:24.04 nvidia-smi
+```
+
+Read the [fresh-host tooling sources](release-sources.md#fresh-host-tooling) when preparing a new machine.
+
+### Choose the configuration before installation
+
+The checked-in `config/workshop.env` is safe to use as-is. It contains names and version pins, not credentials.
+
+From a presenter-machine checkout, enter the workshop directory and upload the reviewed file:
+
+```bash
+cd kserve-demo/docs/open-source-hub-workshop
+scp config/workshop.env "$GPU_HOST:~/workshop.env"
+```
+
+On the GPU host, select that file before running any workshop command:
+
+```bash
+export WORKSHOP_CONFIG="$HOME/workshop.env"
+```
+
+Keep the fixed namespaces from the checked-in file. Do not add passwords, API keys, cloud credentials, or host addresses.
+
+### Install tools, cluster, and platform
+
+Run:
+
+```bash
+./scripts/workshop.sh fresh
+```
+
+`fresh` performs these steps:
+
+1. Installs the pinned kubectl, Minikube, Helm, and Go binaries after checksum verification.
+2. Runs the native Ubuntu, Docker, NVIDIA, GPU-container, and tool preflight.
+3. Creates the pinned Minikube Kubernetes cluster and runs a GPU Pod smoke test.
+4. Installs OpenEverest, monitoring, provider-kserve, the Gateway stack, and the user-management plugin.
+
+Bootstrap leaves matching managed tool versions unchanged. If another installation is on `PATH`, it stops instead of replacing it.
+
+The command stops for the OpenEverest admin password. It does not store that password.
+
+The workshop uses Minikube. It does not install kind because no workshop command uses a kind cluster.
+
 ## Fast operator path
 
 Use two terminals.
 
 ### Terminal 1
 
-Prepare the GPU host and install the platform.
+Prepare a host that already has the pinned workshop tools, then install the platform.
 
 ```bash
 ./scripts/workshop.sh prepare
@@ -140,10 +208,12 @@ Use one entry point for every operator action:
 
 | Command | Result |
 |---|---|
+| `./scripts/workshop.sh bootstrap` | Installs pinned workshop CLI tools and runs the preflight. |
 | `./scripts/workshop.sh preflight` | Verifies native Linux, Docker, NVIDIA GPU, Minikube, Helm, kubectl, and Go. |
 | `./scripts/workshop.sh cluster` | Creates Kubernetes 1.36.6 and runs a CUDA vector-add Pod. |
 | `./scripts/workshop.sh install` | Installs Gateway API, cert-manager, OpenEverest, monitoring, Valkey, provider-kserve, and the plugin. |
 | `./scripts/workshop.sh prepare` | Runs preflight, cluster, and install in order. |
+| `./scripts/workshop.sh fresh` | Runs bootstrap, cluster creation, and platform installation in order. |
 | `./scripts/workshop.sh tunnel` | Runs `minikube tunnel` in terminal 2. |
 | `./scripts/workshop.sh https-local` | Creates self-signed HTTPS on a `nip.io` hostname. |
 | `./scripts/workshop.sh https-public` | Creates trusted Let's Encrypt HTTPS for a public Gateway. |
@@ -151,7 +221,7 @@ Use one entry point for every operator action:
 | `./scripts/workshop.sh ui` | Starts OpenEverest and Grafana port-forwards. |
 | `CONFIRM_DELETE=all ./scripts/workshop.sh cleanup` | Deletes the workshop and restores the kernel setting. |
 
-The stage scripts contain every terminal command. The Helm values and Kubernetes manifests are separate, reviewable files.
+The optional bootstrap installs host CLI tools. The numbered stage scripts contain the cluster and platform commands. Helm values and Kubernetes manifests remain separate, reviewable files.
 
 ## What gets installed
 
@@ -735,6 +805,91 @@ Do not print Secret data on screen.
 | 0:34-0:38 | Secret mounting | Applications consume credentials without putting keys in manifests. |
 | 0:38-0:42 | Quota, rotation, deletion | Consumer lifecycles are independent. |
 | 0:42-0:45 | Grafana | Token usage is attributable by stable key ID. |
+
+## Record a backup video
+
+Record a 12 to 15 minute backup after one complete rehearsal. Use the live 45-minute timeline for the event, but keep the backup short enough to play during a recovery.
+
+### Reset the UI demo state
+
+Do not rebuild a healthy cluster just to record again.
+
+1. Open OpenEverest.
+2. Open Instances, then `qwen-demo`.
+3. Delete the Instance in the UI.
+4. Confirm that `chat-app` and `batch-job` disappear from the Users tab.
+
+Clear any remaining Instance state and reset the disposable quota counters:
+
+```bash
+set -a
+source "${WORKSHOP_CONFIG:-config/workshop.env}"
+set +a
+
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" delete \
+  instance/qwen-demo \
+  --ignore-not-found \
+  --wait=true \
+  --timeout=10m
+
+kubectl --context "$PROFILE" -n "$EVEREST_NS" \
+  rollout restart deployment/demo-valkey
+kubectl --context "$PROFILE" -n "$EVEREST_NS" \
+  rollout status deployment/demo-valkey \
+  --timeout=5m
+
+kubectl --context "$PROFILE" -n "$INSTANCE_NS" \
+  get instance,instanceuser
+```
+
+Keep `./scripts/workshop.sh tunnel` running. Run `./scripts/workshop.sh verify` and `./scripts/workshop.sh ui` before recording.
+
+### Configure the recorder
+
+OBS is the recommended recorder on the presenter machine.
+
+| Setting | Value |
+|---|---|
+| Browser | Brave |
+| Canvas and output | `1920x1080` |
+| Frame rate | `30 FPS` |
+| Recording format | `MKV` |
+| Encoder | Hardware H.264 when available |
+| Terminal font | At least 18 pixels |
+
+Create separate OBS scenes for OpenEverest, the terminal, and Grafana. Capture windows instead of the complete desktop.
+
+Enable Do Not Disturb. Close email, chat, password managers, and unrelated browser tabs. Make a 30-second test recording and confirm that the text and microphone are clear.
+
+After recording, use OBS File, then Remux Recordings, to create an MP4. Keep the original MKV.
+
+### Record four clips
+
+| Clip | Screen actions | Target length |
+|---|---|---:|
+| 1. Create | Select `kserve-qwen-demo-gateway`, create `qwen-demo`, then show an unsaved Start from scratch form. | 3 minutes |
+| 2. Connect | Show readiness, HTTPS connection details, and the Users tab. Create `chat-app` and `batch-job`. | 3 minutes |
+| 3. Call | Show the no-key `401`, one curl response, and one Go response. | 2 minutes |
+| 4. Control | Show separate quotas, key rotation, key deletion, Grafana metrics, and generated resources. | 5 minutes |
+
+Stop clip 1 while the model loads. Start clip 2 only after the Instance and vLLM Pod are ready.
+
+Use the numbered [Live UI path](#live-ui-path) for every selector and command. In the unsaved form, show the scaling, runtime, routing, and observability fields. Close it without selecting Create.
+
+### Keep credentials out of the recording
+
+Pause recording before an admin password or generated API key appears. Copy each key, close the dialog, load it with the hidden `read -s` commands in step 7, then resume.
+
+Never record:
+
+- OpenEverest passwords or API-key values.
+- Kubernetes Secret data or kubeconfig content.
+- SSH usernames, hostnames, or public addresses.
+- Notifications, terminal history, or unrelated browser tabs.
+
+Show only HTTP status codes for quota, rotation, and deletion checks.
+
+Before using the backup, watch the complete MP4 on the presentation laptop. Confirm that audio is clear, text is readable, and no credential appears in any frame.
 
 ## Recovery
 

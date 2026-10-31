@@ -14,18 +14,46 @@ Use this set for the current workshop:
 | Envoy Gateway | `v1.9.2` | Bundled `gateway-helm` dependency | provider-kserve 0.5.0 pins this version. The workshop enables the disabled-by-default subchart. |
 | Envoy AI Gateway / Agent Router | `v1.2.0` | Bundled `ai-gateway-helm` and `ai-gateway-crds-helm` dependencies | provider-kserve 0.5.0 pins this version and keeps the Envoy AI Gateway resource names. |
 | Gateway API | `v1.6` | CRDs from the Envoy Gateway `v1.9.2` chart | cert-manager Gateway support requires these CRDs before cert-manager starts. |
-| KServe | `0.21.0` | KServe charts `kserve-crd`, `kserve-llmisvc-crd`, `kserve-resources`, `kserve-llmisvc-resources`, and `kserve-runtime-configs`, all at `v0.21.0` | This is the KServe version required by provider 0.5.x. The provider chart installs the KServe CRDs and controllers, so the workshop must not install a second KServe release. |
+| KServe | `0.21.0` | KServe charts `kserve-crd`, `kserve-llmisvc-crd`, `kserve-resources`, `kserve-llmisvc-resources`, and `kserve-runtime-configs`, all at `v0.21.0` | This is the KServe version required by provider 0.5.x. The provider chart installs the KServe CRDs and controllers. Do not install a second KServe release. |
 | vLLM | `0.26.0` | `ghcr.io/llm-d/llm-d-cuda:v0.9.0` | This is the vLLM version in the provider 0.5.0 default version bundle and bundled GPU presets. |
 | Kubernetes | `v1.36.6` | Minikube `--kubernetes-version=v1.36.6` | Kubernetes `v1.37.1` is the newest stable release, but provider 0.5.x supports only Kubernetes 1.30 through 1.36. `v1.36.6` is the newest patch in the newest compatible minor. |
-| Minikube | `v1.39.0` | `minikube-linux-amd64` | This is the latest stable Minikube release. It supports Kubernetes 1.36 and 1.37, but its default is 1.37, so the workshop must pass the Kubernetes pin explicitly. |
+| kubectl | `v1.36.6` | `kubectl` Linux `amd64` binary | Matching the Kubernetes server patch removes avoidable client skew. |
+| Minikube | `v1.39.0` | `minikube-linux-amd64` | This is the latest stable Minikube release. It supports Kubernetes 1.36 and 1.37, but its default is 1.37. The workshop passes the Kubernetes pin explicitly. |
+| Helm | `v3.22.1` | `helm-v3.22.1-linux-amd64.tar.gz` | This is the pinned Helm 3 client used for the workshop charts. |
+| Go | `1.26.10` | `go1.26.10.linux-amd64.tar.gz` | This supported Go 1.26 patch satisfies the client module and OpenAI Go requirements. |
 | cert-manager | `v1.21.3` | `jetstack/cert-manager` | This is the latest stable release. Install it separately before provider-kserve so the admission webhook is ready. |
 | kube-prometheus-stack | `92.16.1` | `prometheus-community/kube-prometheus-stack`, asset `kube-prometheus-stack-92.16.1.tgz` | This is the latest chart release. Its Kubernetes constraint is `>=1.25.0-0`, which includes 1.36.6. |
-| Prometheus | `v3.15.1` | `quay.io/prometheus/prometheus:v3.15.1-distroless` | This is the image pinned by kube-prometheus-stack 92.16.1 and the latest stable Prometheus release. `v3.16.0-rc.2` is a preview and must not replace it. |
+| Prometheus | `v3.15.1` | `quay.io/prometheus/prometheus:v3.15.1-distroless` | This is the image pinned by kube-prometheus-stack 92.16.1 and the latest stable Prometheus release. Do not replace it with the `v3.16.0-rc.2` preview. |
 | Grafana | `13.3.0` | Grafana dependency chart `14.2.0`, image `docker.io/grafana/grafana:13.3.0-distroless` | kube-prometheus-stack 92.16.1 pins Grafana chart 14.2.0, whose `appVersion` is 13.3.0. This matches the latest stable Grafana release. |
 | Valkey | `9.1.3` | `valkey/valkey:9.1.3-alpine` | This is the latest stable Valkey release. The workshop uses one disposable instance for token-quota counters. |
 | OpenAI Go client | `v3.91.0` | `github.com/openai/openai-go/v3` | This is the latest non-prerelease client. It requires Go 1.26 or newer. |
 
 Install cert-manager before provider-kserve. A separate release avoids the same-release admission webhook race documented by provider-kserve.
+
+## Fresh-host tooling
+
+The bootstrap targets Ubuntu 24.04 LTS on `x86_64`.
+
+Before bootstrap, the host owner installs the NVIDIA driver, Docker Engine, and NVIDIA Container Toolkit. The script does not automate kernel modules, Secure Boot enrollment, daemon replacement, or Docker group membership.
+
+Use these official procedures:
+
+- [NVIDIA Ubuntu driver installation](https://docs.nvidia.com/datacenter/tesla/driver-installation-guide/ubuntu.html).
+- [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/).
+- [Docker post-installation and group warning](https://docs.docker.com/engine/install/linux-postinstall/).
+- [NVIDIA Container Toolkit installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/1.20.1/install-guide.html).
+- [Minikube NVIDIA GPU procedure](https://minikube.sigs.k8s.io/docs/tutorials/nvidia/).
+
+`bootstrap-host.sh` installs the remaining workshop clients from their official release artifacts:
+
+- kubectl `v1.36.6`: [binary and checksum procedure](https://v1-36.docs.kubernetes.io/docs/tasks/tools/install-kubectl-linux/).
+- Minikube `v1.39.0`: [release and assets](https://github.com/kubernetes/minikube/releases/tag/v1.39.0).
+- Helm `v3.22.1`: [release and checksums](https://github.com/helm/helm/releases/tag/v3.22.1).
+- Go `1.26.10`: [download metadata](https://go.dev/dl/?mode=json) and [installation procedure](https://go.dev/doc/install).
+
+For each missing client, the script downloads the artifact into a temporary directory and verifies its published SHA-256 value before privileged installation. It leaves a matching managed version unchanged and rejects another installation.
+
+Kind is not a workshop dependency. Minikube owns the cluster lifecycle and documents the Docker-based NVIDIA path. Installing kind adds another cluster and kubeconfig context without serving a runbook step.
 
 ## Exact runbook pins
 
@@ -76,7 +104,7 @@ helm show chart oci://ghcr.io/openeverest/charts/plugin-user-management --versio
 
 | Component | Latest published release | Status and compatibility consequence |
 |---|---:|---|
-| OpenEverest | `v1.17.0` stable and `v2.0.0-dev.4` preview | Stable v1.17.0 uses the v1 architecture and cannot satisfy provider 0.5.x's v2 requirement. The workshop must use the preview on a fresh cluster. The preview release states that it is not for production and has no upgrade path from v1 or the prior preview. |
+| OpenEverest | `v1.17.0` stable and `v2.0.0-dev.4` preview | Stable v1.17.0 uses the v1 architecture and cannot satisfy provider 0.5.x's v2 requirement. Use the preview on a fresh cluster. The preview release states that it is not for production and has no upgrade path from v1 or the prior preview. |
 | provider-kserve | `v0.5.0` | GitHub marks the release non-prerelease, but the repository labels the project pre-alpha. Its declared range is OpenEverest `>=2.0.0-dev.4`, KServe `0.21.0`, and Kubernetes 1.30 through 1.36. |
 | plugin-user-management | `v0.2.0` | Adds provider-kserve API keys and requires the OpenEverest plugin contract `^18.0.0`. |
 | Envoy Gateway | `v1.9.2` | Pinned by provider-kserve 0.5.0. |
@@ -92,7 +120,7 @@ helm show chart oci://ghcr.io/openeverest/charts/plugin-user-management --versio
 
 ## provider-kserve 0.1.0 compatibility
 
-Yes. OpenEverest must use a Developer Preview with provider-kserve `0.1.0`.
+Yes. OpenEverest requires a Developer Preview with provider-kserve `0.1.0`.
 
 OpenEverest stable `v1.17.0` is not compatible.
 
@@ -102,7 +130,7 @@ Use OpenEverest `2.0.0-dev.2` for an exact historical pairing.
 
 Do not pair provider 0.1.0 with Developer Preview 3 or 4. Those releases changed the provider-facing schemas.
 
-Providers built for the prior preview will not reconcile correctly.
+Providers built for the prior preview do not reconcile correctly.
 
 The complete historical set is therefore OpenEverest `2.0.0-dev.2`, provider-kserve `0.1.0`, KServe `0.20.0`, Kubernetes `v1.34.12`, and Minikube `v1.39.0`. It is not the recommended workshop set. Kubernetes 1.34 reached end of life on 2026-10-27, and provider 0.1.0 cannot move to a supported Kubernetes minor within its declared range.
 
@@ -139,10 +167,10 @@ This is a workshop policy, not an OpenEverest API requirement.
 | Instance field | Meaning, default, and validation in provider-kserve `0.5.0` |
 |---|---|
 | `spec.components.llmEngine.parameters.tensorParallelSize` | Maps to vLLM tensor parallel size. The UI default is `1` and its allowed range is 1 to 16. The provider requires every GPU model pod to have at least this many GPUs. |
-| `spec.components.llmEngine.parameters.pipelineParallelSize` | Maps to vLLM pipeline parallel size. The UI default is `1` and its allowed range is 1 to 16. With `workerCount`, it must equal `workerCount + 1`; the flag alone does not create worker pods. |
+| `spec.components.llmEngine.parameters.pipelineParallelSize` | Maps to vLLM pipeline parallel size. The UI default is `1` and its allowed range is 1 to 16. With `workerCount`, it equals `workerCount + 1`; the flag alone does not create worker pods. |
 | `spec.components.llmEngine.parameters.dataParallelSize` | Maps to KServe data parallelism. The UI default is `1` and its allowed range is 1 to 16. Values greater than `1` map to both `parallelism.data` and `dataLocal`; `1` is treated as no-op. Data and pipeline sizes cannot both exceed `1`. |
 | `spec.components.llmEngine.replicas` | Fixed KServe workload copies. The topology and UI default to `1`; the UI range is 0 to 32, and provider validation rejects negative values. When WVA autoscaling fields are set, the provider emits `scaling` instead of fixed `replicas`. |
-| `spec.components.llmEngine.parameters.gpuCount` | The `nvidia.com/gpu` limit for each vLLM head and worker pod. On the GPU profile, an empty value preserves an existing GPU limit or defaults it to `1`. The UI range is 1 to 16. It is invalid on the CPU profile and must be at least `tensorParallelSize`. |
+| `spec.components.llmEngine.parameters.gpuCount` | The `nvidia.com/gpu` limit for each vLLM head and worker pod. On the GPU profile, an empty value preserves an existing GPU limit or defaults it to `1`. The UI range is 1 to 16. It is invalid on the CPU profile and cannot be lower than `tensorParallelSize`. |
 
 Provider source evidence for the table:
 
