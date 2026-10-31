@@ -1,0 +1,31 @@
+storageInitializer:
+  resources:
+    limits:
+      cpu: "2"
+      memory: 4Gi
+metrics:
+  podMonitor:
+    enabled: true
+    interval: 15s
+  grafanaDashboards:
+    enabled: true
+    namespace: monitoring-demo
+    gateway: true
+envoy-gateway:
+  enabled: true
+  config:
+    envoyGateway:
+      rateLimit:
+        backend:
+          type: Redis
+          redis:
+            url: demo-valkey.everest-system.svc.cluster.local:6379
+envoy-ai-gateway:
+  enabled: true
+aiGateway:
+  enabled: true
+  gatewayService:
+    type: LoadBalancer
+  auth:
+    enabled: true
+    allowInsecureHTTP: true

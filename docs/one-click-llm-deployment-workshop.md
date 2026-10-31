@@ -1,189 +1,202 @@
 # One-Click LLM Deployment on Kubernetes
 
-## Hands-on with OpenEverest and KServe
+## OpenEverest Model-as-a-Service workshop
 
 | Event | Details |
 |---|---|
-| Date | November 6, 2026 |
-| Time | 1:30 PM to 2:15 PM |
-| Venue | Open Source Hub |
-| Format | Hands-on workshop |
-| Speaker | Atharva Mhaske |
+| Format | 45-minute hands-on workshop |
+| Host | Native Ubuntu NVIDIA GPU machine |
+| Model | Qwen3 0.6B |
+| Serving | KServe 0.21 and vLLM |
+| Access | Envoy AI Gateway over HTTPS |
+| Consumers | One API key per application |
 
-## Add this workshop to your calendar
+[Add this workshop to your calendar](assets/one-click-llm-deployment/one-click-llm-deployment.ics).
 
-[Add to Calendar](assets/one-click-llm-deployment/one-click-llm-deployment.ics)
+## Workshop result
 
-The calendar file uses the venue-local time from the event listing. The listing does not name a time zone.
+The workshop starts with a cloneable repository and ends with a consumable model API.
 
-## Abstract
+Participants complete these tasks.
 
-An LLM deployment needs more than one container.
+- Install the platform with one checked-in script entry point.
+- Create a GPU model from an OpenEverest preset.
+- Expose it on an HTTPS `nip.io` domain.
+- Create separate `chat-app` and `batch-job` API keys.
+- Call the OpenAI-compatible API with curl and Go.
+- Mount generated credentials from a Kubernetes Secret.
+- Prove separate quotas, key rotation, deletion, and metrics.
 
-Kubernetes must schedule a GPU, start a model server, expose a Service, report status, and publish metrics.
+## UI-first flow
 
-In this workshop, we create one OpenEverest `Instance` through the UI.
+```text
+Instances -> Create -> provider-kserve
+  -> kserve-qwen-demo-gateway preset
+  -> qwen-demo
+  -> Connection details
+  -> Users
+  -> Create API key
+  -> chat-app
+  -> API key + Base URL + Model
+```
 
-`provider-kserve` turns that intent into a KServe `LLMInferenceService`. KServe creates the vLLM workload and Service.
-
-We call Qwen3 0.6B through an OpenAI-compatible API. Then we inspect vLLM metrics in Prometheus and Grafana.
-
-This workshop uses direct model delivery and adds no persistent model-delivery component.
-
-## The problem
-
-Without a platform contract, users must understand several APIs:
-
-- Kubernetes GPU resources.
-- KServe serving resources.
-- vLLM runtime flags.
-- Model locations and names.
-- Services and routing.
-- Prometheus discovery.
-- Health and readiness status.
-
-OpenEverest presents these choices in one provider-backed form.
-
-The abstraction does not hide Kubernetes. Every generated resource remains visible through `kubectl`.
+The live demo stays in the UI until client verification.
 
 ## Architecture
 
-```text
-OpenEverest UI
-  -> OpenEverest Instance
-  -> provider-kserve 0.5.0
-  -> KServe LLMInferenceService 0.21.0
-  -> Deployment, Service, and vLLM Pod
-  -> NVIDIA GPU
-  -> OpenAI-compatible API
-  -> PodMonitor, Prometheus, and Grafana
+```mermaid
+flowchart LR
+    UI[OpenEverest UI] --> I[Instance]
+    I --> PK[provider-kserve]
+    PK --> KS[KServe]
+    KS --> V[vLLM GPU Pod]
+
+    USERS[Users tab] --> PUM[User Management plugin]
+    PUM --> KEY[Per-application API key]
+
+    CLIENT[curl or Go] --> HTTPS[nip.io HTTPS]
+    HTTPS --> EG[Envoy Gateway]
+    EG --> AIG[Envoy AI Gateway]
+    AIG --> KS
 ```
 
-The controllers create and repair resources. They are not in the inference request path.
+The provider Helm release installs KServe, Envoy Gateway, and Envoy AI Gateway. The User Management plugin adds the Users tab and `InstanceUser` resources.
 
-## Current workshop releases
+## Installed releases
 
 | Component | Version |
 |---|---:|
-| OpenEverest | `2.0.0-dev.4` Developer Preview |
+| OpenEverest | `2.0.0-dev.4` |
 | provider-kserve | `0.5.0` |
+| plugin-user-management | `0.2.0` |
 | KServe | `0.21.0` |
+| Envoy Gateway | `v1.9.2` |
+| Envoy AI Gateway / Agent Router | `v1.2.0` |
 | Kubernetes | `v1.36.6` |
 | Minikube | `v1.39.0` |
 | cert-manager | `v1.21.3` |
 | kube-prometheus-stack | `92.16.1` |
-| Prometheus | `v3.15.1` |
-| Grafana | `13.3.0` |
 
-OpenEverest stable v1.17.0 does not support provider-kserve 0.5.0.
+Agent Router is the current upstream name for the pinned Envoy AI Gateway component. The workshop does not install a second Agent Router controller.
 
-The workshop uses the newest compatible OpenEverest v2 Developer Preview on a fresh cluster.
+## Clone and prepare
 
-Minikube 1.39 defaults to Kubernetes 1.37. The provider supports Kubernetes through 1.36, so the runbook pins 1.36.6.
+On the GPU host:
 
-## UI deployment
+```bash
+git clone https://github.com/atharvamhaske/kserve-demo.git
+cd kserve-demo/docs/open-source-hub-workshop
+./scripts/workshop.sh prepare
+```
 
-The live workflow starts on the OpenEverest Instances page.
+In terminal 2:
 
-We select:
+```bash
+./scripts/workshop.sh tunnel
+```
 
-| Field | Value |
+Back in terminal 1:
+
+```bash
+./scripts/workshop.sh https-local
+./scripts/workshop.sh verify
+./scripts/workshop.sh ui
+```
+
+The [all-in-one runbook](open-source-hub-workshop/) contains the UI selectors, HTTPS modes, client examples, recovery, and cleanup.
+
+## Model preset
+
+The setup adds `kserve-qwen-demo-gateway`.
+
+The preset selects:
+
+- Qwen3 0.6B.
+- One NVIDIA GPU.
+- Envoy AI Gateway.
+- 300 tokens per user per hour.
+- vLLM metrics.
+- One replica with a 2048-token context limit.
+
+The provider also installs `kserve-smollm-cpu` and `kserve-qwen-gpu`. Those default presets use ClusterIP and do not demonstrate API keys.
+
+## One key per consumer
+
+The model owns one System key for compatibility. Applications use generated keys from the Users tab.
+
+Create `chat-app` and `batch-job`. Each receives:
+
+| Field | Purpose |
 |---|---|
-| Provider | `provider-kserve` |
-| Topology | `llm` |
-| Model | `Qwen3 0.6B` |
-| Served model name | `qwen3-0.6b` |
-| Compute profile | GPU |
-| GPUs per Pod | `1` |
-| Replicas | `1` |
-| External access | ClusterIP |
-| Prometheus metrics | On |
+| API key | Bearer credential for one model consumer. |
+| Base URL | HTTPS OpenAI-compatible URL ending in `/v1`. |
+| Model | Value for the request `model` field. |
+| Secret | Mountable Kubernetes credentials. |
 
-The provider supplies the model catalog and form schema.
-
-Operators can change the catalog through provider Helm values. The frontend does not contain a fixed model list.
-
-## What one Instance creates
-
-The UI stores one `Instance` resource.
-
-The provider creates an `LLMInferenceService`. KServe creates the Deployment, Service, storage initializer, and vLLM Pod.
-
-The storage initializer downloads the public Qwen model for the Pod.
-
-The provider reports workload status back to the original `Instance`.
-
-The same form also exposes CPU serving, autoscaling, OCI model images, LoRA, tool calling, reasoning, AI Gateway routing, tracing, and multi-node workers.
-
-Those optional paths need separate infrastructure or verification. The workshop does not call them verified results.
+Rotation changes only one consumer. Deletion revokes only one consumer. Metrics keep a stable key ID without exposing the key value.
 
 ## OpenAI-compatible API
 
-After the Pod becomes ready, the workshop calls:
+Curl uses the copied UI values:
 
-```text
-GET /v1/models
-POST /v1/chat/completions
+```bash
+curl --fail-with-body \
+  "$OPENAI_BASE_URL/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{
+    \"model\": \"$OPENAI_MODEL\",
+    \"messages\": [
+      {\"role\": \"user\", \"content\": \"Explain Kubernetes in one sentence.\"}
+    ]
+  }"
 ```
 
-The model list must contain `qwen3-0.6b`.
+The checked-in Go client uses the official `github.com/openai/openai-go/v3` module:
 
-The chat response proves that routing, model delivery, vLLM startup, and GPU inference work together.
+```bash
+cd clients/go
+go mod download
+go run .
+```
 
-## Monitoring
+## What the demonstration proves
 
-When the Prometheus Operator CRD exists, provider-kserve creates one `PodMonitor`.
+- The host and container runtime can use the NVIDIA GPU.
+- Kubernetes can allocate one GPU to a Pod.
+- OpenEverest can create the model from a UI preset.
+- provider-kserve can reconcile the Instance into KServe resources.
+- Envoy Gateway can terminate HTTPS and authenticate API keys.
+- Envoy AI Gateway can route by model and meter tokens.
+- The plugin can manage one key lifecycle per consumer.
+- Curl and Go can use the same OpenAI-compatible contract.
+- Valkey can isolate hourly token quotas by API-key ID and model.
+- Grafana can attribute Gateway token use without storing the secret key value.
 
-Prometheus scrapes vLLM on port 8000. Grafana shows:
-
-- Prompt and generated token throughput.
-- Running and waiting requests.
-- Time to first token.
-- End-to-end request latency.
-- Successful requests.
-- Preemptions.
-
-A ready Pod does not prove useful inference. The workshop checks the API and request metrics.
+This demonstration does not prove production readiness, performance, high availability, or durable quota storage.
 
 ## Live schedule
 
 | Time | Content |
 |---|---|
-| 0 to 5 minutes | Problem, architecture, and one-resource idea |
-| 5 to 12 minutes | OpenEverest UI and model selector |
-| 12 to 20 minutes | Deploy and explain the controller chain |
-| 20 to 25 minutes | OpenAI-compatible API request |
-| 25 to 32 minutes | Grafana and vLLM metrics |
-| 32 to 38 minutes | Inspect generated Kubernetes resources |
-| 38 to 42 minutes | Show optional UI selectors |
-| 42 to 45 minutes | Questions |
+| 0:00-0:05 | Outcome, repository, and architecture |
+| 0:05-0:10 | Installed Helm releases and controller roles |
+| 0:10-0:18 | Preset-based model creation in the UI |
+| 0:18-0:23 | Readiness and connection details |
+| 0:23-0:29 | Per-application keys in the Users tab |
+| 0:29-0:34 | Curl and Go API consumers |
+| 0:34-0:38 | Kubernetes Secret mounting |
+| 0:38-0:42 | Quota, rotation, and deletion |
+| 0:42-0:45 | Grafana and recap |
 
-## What the demonstration proves
+## Workshop files
 
-- The host and container runtime can use the NVIDIA GPU.
-- Kubernetes advertises the GPU.
-- The released provider registers with OpenEverest.
-- The UI creates one `Instance`.
-- KServe creates a ready vLLM workload.
-- `/v1/models` returns `qwen3-0.6b`.
-- Chat completion returns assistant text.
-- Prometheus scrapes the vLLM Pod.
-- Grafana shows the completed request.
-
-This is a functional workshop result. It is not a performance benchmark or production-readiness claim.
-
-## Follow the workshop
-
-Use the [all-in-one runbook](open-source-hub-workshop/) for every command, UI step, speaker cue, recovery check, and cleanup action.
-
-Read the [release sources](open-source-hub-workshop/release-sources.md) for compatibility evidence.
-
-Use the [screenshot guide](one-click-llm-deployment-screenshot-guide.md) during the final rehearsal.
+- [All-in-one runbook and scripts](open-source-hub-workshop/)
+- [Release and API source evidence](open-source-hub-workshop/release-sources.md)
+- [Screenshot capture guide](one-click-llm-deployment-screenshot-guide.md)
 
 ## Speaker
 
 Atharva Mhaske is a Backend and Infra Engineer at cld9.ai.
 
-He is a Google Summer of Code 2026 mentee at OpenScienceLabs. He is also an OpenTelemetry community member and contributor.
-
-Final approval rests with the writer.
+Final wording approval rests with the workshop owner.

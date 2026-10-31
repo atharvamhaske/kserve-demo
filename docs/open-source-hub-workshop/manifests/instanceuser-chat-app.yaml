@@ -1,0 +1,11 @@
+apiVersion: plugin-user-management.plugins.openeverest.io/v1alpha1
+kind: InstanceUser
+metadata:
+  name: chat-app
+  namespace: default
+spec:
+  instanceRef:
+    name: qwen-demo
+  username: chat-app
+  roles:
+    - role: invoke

@@ -1,18 +1,190 @@
-# Open Source Hub all-in-one workshop runbook
+# Open Source Hub UI-first Model-as-a-Service workshop
 
-This is the only live runbook for the 45-minute OpenEverest and KServe workshop.
+This module creates one GPU model, one HTTPS endpoint, and one API key per application.
 
-It contains every cluster command, UI step, verification gate, recovery check, and speaker cue.
+The live story stays in the OpenEverest UI. The checked-in scripts prepare and verify the platform.
 
-## Scope
+## What the audience sees
 
-Use one disposable native Ubuntu GPU host.
+1. Create `qwen-demo` from an OpenEverest preset.
+2. Open its HTTPS connection details.
+3. Create `chat-app` and `batch-job` API keys in the Users tab.
+4. Call the model with curl and Go.
+5. Prove separate quotas, rotation, deletion, and metrics.
 
-Create the model `Instance` only through the OpenEverest UI. Use terminal commands to install, observe, and verify the platform.
+The terminal is evidence. The UI is the main story.
 
-KServe downloads the public model for the serving Pod. This runbook adds no persistent model-delivery component.
+## Clone this repository on the GPU host
 
-OpenEverest v2 and provider-kserve are pre-alpha. Use them for testing and feedback, not production.
+Use a native Ubuntu NVIDIA GPU host. Do not use WSL for this path.
+
+```bash
+git clone https://github.com/atharvamhaske/kserve-demo.git
+cd kserve-demo/docs/open-source-hub-workshop
+./scripts/workshop.sh help
+```
+
+The workshop module is self-contained:
+
+```text
+open-source-hub-workshop/
+├── README.md
+├── release-sources.md
+├── clients/
+│   └── go/
+│       ├── go.mod
+│       └── main.go
+├── config/
+│   └── workshop.env
+├── manifests/
+│   ├── application-env.example.yaml
+│   ├── demo-valkey.yaml
+│   ├── instancepreset-qwen-demo-gateway.yaml
+│   ├── instanceuser-chat-app.yaml
+│   ├── qwen-demo-terminal.yaml
+│   └── selfsigned-clusterissuer.yaml
+├── scripts/
+│   ├── workshop.sh
+│   ├── 00-preflight.sh
+│   ├── 10-create-cluster.sh
+│   ├── 20-install-platform.sh
+│   ├── 30-enable-local-https.sh
+│   ├── 31-enable-public-https.sh
+│   ├── 40-verify.sh
+│   ├── 50-open-ui.sh
+│   └── 90-cleanup.sh
+└── values/
+    ├── monitoring.yaml
+    └── provider-kserve.yaml
+```
+
+## Fast operator path
+
+Use two terminals.
+
+### Terminal 1
+
+Prepare the GPU host and install the platform.
+
+```bash
+./scripts/workshop.sh prepare
+```
+
+The command stops for the OpenEverest admin password. It does not store that password.
+
+### Terminal 2
+
+Keep the Minikube LoadBalancer tunnel open.
+
+```bash
+./scripts/workshop.sh tunnel
+```
+
+### Terminal 1 again
+
+Create a local `nip.io` HTTPS endpoint, verify the platform, and open both UIs.
+
+```bash
+./scripts/workshop.sh https-local
+./scripts/workshop.sh verify
+./scripts/workshop.sh ui
+```
+
+Open these URLs.
+
+- OpenEverest: `http://localhost:8080`.
+- Grafana: `http://localhost:3000`.
+
+For a remote GPU host, run this command on the presenter machine.
+
+```bash
+ssh -N \
+  -L 8080:localhost:8080 \
+  -L 3000:localhost:3000 \
+  "$GPU_HOST"
+```
+
+Run API clients on the GPU host when the Minikube Gateway address is private.
+
+## Script command map
+
+Use one entry point for every operator action:
+
+| Command | Result |
+|---|---|
+| `./scripts/workshop.sh preflight` | Verifies native Linux, Docker, NVIDIA GPU, Minikube, Helm, kubectl, and Go. |
+| `./scripts/workshop.sh cluster` | Creates Kubernetes 1.36.6 and runs a CUDA vector-add Pod. |
+| `./scripts/workshop.sh install` | Installs Gateway API, cert-manager, OpenEverest, monitoring, Valkey, provider-kserve, and the plugin. |
+| `./scripts/workshop.sh prepare` | Runs preflight, cluster, and install in order. |
+| `./scripts/workshop.sh tunnel` | Runs `minikube tunnel` in terminal 2. |
+| `./scripts/workshop.sh https-local` | Creates self-signed HTTPS on a `nip.io` hostname. |
+| `./scripts/workshop.sh https-public` | Creates trusted Let's Encrypt HTTPS for a public Gateway. |
+| `./scripts/workshop.sh verify` | Checks releases, CRDs, presets, Gateway address, certificate, and the 401 auth gate. |
+| `./scripts/workshop.sh ui` | Starts OpenEverest and Grafana port-forwards. |
+| `CONFIRM_DELETE=all ./scripts/workshop.sh cleanup` | Deletes the workshop and restores the kernel setting. |
+
+The stage scripts contain every terminal command. The Helm values and Kubernetes manifests are separate, reviewable files.
+
+## What gets installed
+
+| Method | Name | What it adds |
+|---|---|---|
+| `kubectl apply` | Gateway API CRDs | `GatewayClass`, `Gateway`, `HTTPRoute`, and related APIs. |
+| Helm | `cert-manager` | KServe webhook certificates and Gateway TLS certificates. |
+| Helm | `everest-core` | OpenEverest UI, API, controllers, plugin support, and core CRDs. |
+| Helm | `observability` | Prometheus Operator, Prometheus, and Grafana. |
+| Manifest | `demo-valkey` | Demo-only quota counters without persistence. |
+| Helm | `provider-kserve` | Provider, KServe, Envoy Gateway, Envoy AI Gateway, Gateway, and dashboards. |
+| Helm | `plugin-user-management` | Users tab, plugin API, `InstanceUser` CRD, controller, and credentials Secrets. |
+| Manifest | `kserve-qwen-demo-gateway` | Workshop preset for Qwen3 0.6B, GPU, HTTPS Gateway, metrics, and quota. |
+| OpenEverest UI | `qwen-demo` | Model workload, route, system key, and connection details. |
+| OpenEverest UI | `chat-app`, `batch-job` | Separate credentials and Gateway key Secrets. |
+
+Do not install KServe, Envoy Gateway, or Envoy AI Gateway as separate releases. The provider release installs its pinned subcharts.
+
+## Component flow
+
+```mermaid
+flowchart LR
+    UI[OpenEverest UI] --> I[Instance qwen-demo]
+    I --> PK[provider-kserve]
+    PK --> KS[KServe LLMInferenceService]
+    KS --> V[vLLM GPU Pod]
+
+    USERS[Users tab] --> PUM[User Management plugin]
+    PUM --> IU[InstanceUser and credentials Secret]
+    IU --> AUTH[Envoy SecurityPolicy]
+
+    CLIENT[Go or curl] --> TLS[nip.io HTTPS]
+    TLS --> EG[Envoy Gateway]
+    EG --> AIG[Envoy AI Gateway]
+    AIG --> POOL[InferencePool and endpoint picker]
+    POOL --> V
+```
+
+The matching ASCII request path is:
+
+```text
+Go or curl
+  -> https://<gateway-ip-with-dashes>.nip.io/v1
+  -> Envoy Gateway: TLS and API-key authentication
+  -> Envoy AI Gateway: model routing, token metering, quota identity
+  -> KServe InferencePool and endpoint picker
+  -> vLLM Pod
+  -> NVIDIA GPU
+```
+
+## Envoy AI Gateway, Agent Router, and agentgateway
+
+provider-kserve `0.5.0` installs Envoy AI Gateway `v1.2.0` when the checked-in values enable it.
+
+The current upstream project is called Agent Router. The pinned chart and OpenEverest UI still use the Envoy AI Gateway name.
+
+Do not install another Agent Router release. That duplicates the controller already installed by provider-kserve.
+
+KServe also supports a different project named `agentgateway`. provider-kserve `0.5.0` does not install or use it.
+
+The KServe endpoint picker is not Agent Router. It selects a healthy vLLM endpoint after Gateway authorization.
 
 ## Release pins
 
@@ -20,533 +192,562 @@ OpenEverest v2 and provider-kserve are pre-alpha. Use them for testing and feedb
 |---|---:|
 | OpenEverest | `2.0.0-dev.4` Developer Preview |
 | provider-kserve | `0.5.0` |
-| KServe | `0.21.0`, bundled by provider-kserve |
+| plugin-user-management | `0.2.0` |
+| KServe | `0.21.0` |
+| Envoy Gateway | `v1.9.2` |
+| Envoy AI Gateway / Agent Router | `v1.2.0` |
+| Gateway API | `v1.6` |
 | Kubernetes | `v1.36.6` |
 | Minikube | `v1.39.0` |
 | cert-manager | `v1.21.3` |
+| Valkey | `9.1.3-alpine` |
 | kube-prometheus-stack | `92.16.1` |
 | Prometheus | `v3.15.1` |
 | Grafana | `13.3.0` |
+| OpenAI Go client | `v3.91.0` |
 
-Kubernetes 1.37 is newer but outside the provider's declared range. Pin Kubernetes 1.36.6.
+Kubernetes 1.37 is outside the provider's declared range. Pin Kubernetes 1.36.6.
 
-See [release sources](release-sources.md) for compatibility evidence and official links.
+See [release sources](release-sources.md) for primary-source evidence.
 
-## Terminal layout
+## Plugins and presets
 
-Open five terminals on the GPU host:
+### Installed plugin
 
-| Terminal | Role |
+This workshop installs one OpenEverest plugin:
+
+| Plugin | UI location | Purpose |
+|---|---|---|
+| User Management `0.2.0` | Model details, then Users | Creates, shows, rotates, and deletes one API key per model consumer. |
+
+Verify it from the terminal:
+
+```bash
+kubectl get plugins.extensions.openeverest.io plugin-user-management
+```
+
+### Installed presets
+
+provider-kserve installs two defaults. The setup script adds one workshop preset.
+
+| Preset card | Model | Compute | Access | Use |
+|---|---|---|---|---|
+| `kserve-smollm-cpu` | SmolLM2 135M Instruct | CPU | ClusterIP | Fast controller smoke test. |
+| `kserve-qwen-gpu` | Qwen3 4B | One GPU | ClusterIP | Default provider GPU example. |
+| `kserve-qwen-demo-gateway` | Qwen3 0.6B | One GPU | Envoy AI Gateway | Main HTTPS and API-key workshop. |
+
+List and inspect them:
+
+```bash
+kubectl get instancepreset
+kubectl get instancepreset kserve-smollm-cpu -o yaml
+kubectl get instancepreset kserve-qwen-gpu -o yaml
+kubectl get instancepreset kserve-qwen-demo-gateway -o yaml
+```
+
+The two provider defaults do not enable Envoy AI Gateway. They cannot demonstrate per-application keys.
+
+OpenEverest does not store a `presetRef` in an Instance. The UI resolves a preset and submits a complete Instance spec. The annotation records which preset supplied the spec.
+
+## HTTPS modes
+
+### Local Minikube mode
+
+`./scripts/workshop.sh https-local` uses the Gateway IPv4 address to create this hostname:
+
+```text
+https://<gateway-ip-with-dashes>.nip.io/v1
+```
+
+It creates a self-signed certificate and saves it here:
+
+```text
+${XDG_STATE_HOME:-$HOME/.local/state}/openeverest-kserve-workshop/gateway.crt
+```
+
+The script verifies that HTTPS without a key returns `401`.
+
+### Public trusted mode
+
+Use this only when the Gateway has a public IPv4 address and ports 80 and 443 are reachable from the internet.
+
+Rehearse with the Let's Encrypt staging server:
+
+```bash
+export PUBLIC_GATEWAY_CONFIRMED=yes
+export ACME_EMAIL=presenter@example.com
+export ACME_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory
+./scripts/workshop.sh https-public
+```
+
+Use the production server for the final trusted certificate:
+
+```bash
+export PUBLIC_GATEWAY_CONFIRMED=yes
+export ACME_EMAIL=presenter@example.com
+unset ACME_SERVER
+./scripts/workshop.sh https-public
+```
+
+A private Minikube address cannot pass public HTTP-01 validation. Use local mode or a cluster with a public LoadBalancer.
+
+## Minikube alternatives
+
+Keep Minikube as the disposable local default.
+
+| Option | Best fit | Required change |
+|---|---|---|
+| MicroK8s | Ubuntu host with packaged GPU support. | Pin a supported channel and configure the NVIDIA runtime class. |
+| K3s | Lightweight host installation. | Pin Kubernetes 1.30 through 1.36 and make NVIDIA the generated Pod runtime. |
+| kubeadm | Production-like local cluster. | Add networking, LoadBalancer support, and the NVIDIA device plugin. |
+| GKE Standard | Public trusted HTTPS demo. | Create a GPU node pool and use the cloud LoadBalancer. |
+
+Do not use kind for this workshop. The project does not document a supported NVIDIA GPU path.
+
+k3d needs a custom CUDA-capable K3s image and extra runtime configuration. It is not simpler here.
+
+## Live UI path
+
+## 1. Create the model from the workshop preset
+
+Open OpenEverest and select Instances, then Create.
+
+If the provider drawer appears, select `provider-kserve`.
+
+The first wizard step is Basic Info. Its heading is Create an instance.
+
+Select the preset card:
+
+```text
+kserve-qwen-demo-gateway
+```
+
+Set:
+
+| Field | Value |
 |---|---|
-| 1 | Install, verify, and inspect the controller chain. |
-| 2 | Watch the created Kubernetes resources. |
-| 3 | Run the OpenEverest UI port-forward. |
-| 4 | Run the model Service port-forward. |
-| 5 | Run Grafana, API, metrics, and GPU commands. |
+| Namespace | `default` |
+| Display name | `qwen-demo` |
+| Topology | `llm`, locked by the preset |
 
-Do not record passwords, SSH commands, public addresses, Secrets, or kubeconfig data.
+Select Create.
 
-## 1. Load the workshop values
+The preset already selects:
 
-Run this block in all five terminals:
+- Qwen3 0.6B.
+- One GPU.
+- Two CPUs and 16 GiB memory request.
+- One replica.
+- 2048 context tokens.
+- One concurrent sequence.
+- 0.2 GPU memory use.
+- Envoy AI Gateway.
+- 300 tokens per user per hour.
+- vLLM Prometheus metrics.
 
-```bash
-set -a
-PROFILE=kserve-demo
-EVEREST_NS=everest-system
-INSTANCE_NS=default
-MONITORING_NS=monitoring-demo
-INSTANCE=qwen-demo
-MODEL_NAME=qwen3-0.6b
-KUBERNETES_VERSION=v1.36.6
-CERT_MANAGER_VERSION=v1.21.3
-EVEREST_VERSION=2.0.0-dev.4
-PROVIDER_VERSION=0.5.0
-MONITORING_VERSION=92.16.1
-RUNTIME_IMAGE=ghcr.io/llm-d/llm-d-cuda:v0.9.0
-set +a
-```
+Selecting a preset disables Configure more options. This is intentional for the short live path.
 
-## 2. Verify the Ubuntu GPU host
+## 2. Manual UI path
 
-Run in terminal 1:
+Use this path when teaching every selector.
 
-```bash
-. /etc/os-release
-printf 'OS=%s %s\n' "$ID" "$VERSION_ID"
-uname -m
-systemd-detect-virt || true
-nproc
-free -h
-df -h /
-nvidia-smi
-docker version
-docker info --format '{{json .Runtimes}}'
-docker run --rm --gpus all ubuntu:24.04 nvidia-smi
-minikube version --short
-kubectl version --client=true
-helm version --short
-```
+Select Start from scratch, then Configure more options.
 
-If the host is WSL, the GPU is absent, or Docker cannot use the GPU, stop.
+Set the top-level fields:
 
-Gate: The host and container show the same NVIDIA GPU. Minikube reports `v1.39.0`.
+| Field | Value |
+|---|---|
+| Namespace | `default` |
+| Display name | `qwen-demo` |
+| Topology | `llm` |
 
-## 3. Create the GPU cluster
-
-The Minikube Docker GPU path requires `net.core.bpf_jit_harden=0`.
-
-Record the current value:
-
-```bash
-ORIGINAL_BPF_JIT_HARDEN=$(sudo sysctl -n net.core.bpf_jit_harden)
-printf '%s\n' "$ORIGINAL_BPF_JIT_HARDEN" >"$HOME/.kserve-demo-bpf-jit-harden"
-printf 'Original net.core.bpf_jit_harden=%s\n' "$ORIGINAL_BPF_JIT_HARDEN"
-```
-
-Warning: Setting `0` reduces kernel hardening for this lab.
-
-```bash
-sudo sysctl -w net.core.bpf_jit_harden=0
-minikube start -p "$PROFILE" \
-  --driver=docker \
-  --container-runtime=docker \
-  --gpus=all \
-  --kubernetes-version="$KUBERNETES_VERSION" \
-  --cpus=16 \
-  --memory=32768
-kubectl config use-context "$PROFILE"
-kubectl get node "$PROFILE" -o wide
-kubectl get node "$PROFILE" \
-  -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'
-```
-
-Run a real CUDA workload:
-
-```bash
-kubectl run gpu-smoke --restart=Never \
-  --image=nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda12.5.0 \
-  --overrides='{"spec":{"containers":[{"name":"gpu-smoke","image":"nvcr.io/nvidia/k8s/cuda-sample:vectoradd-cuda12.5.0","resources":{"limits":{"nvidia.com/gpu":1}}}]}}'
-kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/gpu-smoke --timeout=30m
-kubectl logs gpu-smoke
-kubectl delete pod gpu-smoke
-```
-
-Gate: GPU capacity is positive and the smoke Pod prints `Test PASSED`.
-
-## 4. Install OpenEverest, KServe, and monitoring
-
-Add the chart repositories:
-
-```bash
-helm repo add jetstack https://charts.jetstack.io --force-update
-helm repo add openeverest https://openeverest.github.io/helm-charts/ --force-update
-helm repo add prometheus-community \
-  https://prometheus-community.github.io/helm-charts \
-  --force-update
-helm repo update
-```
-
-Install cert-manager first:
-
-```bash
-helm upgrade --install cert-manager jetstack/cert-manager \
-  --kube-context "$PROFILE" \
-  --namespace cert-manager \
-  --create-namespace \
-  --version "$CERT_MANAGER_VERSION" \
-  --set crds.enabled=true \
-  --wait \
-  --timeout 30m
-```
-
-Install OpenEverest Developer Preview 4:
-
-```bash
-read -rsp 'OpenEverest admin password: ' UI_PASSWORD
-printf '\n'
-helm upgrade --install everest-core openeverest/openeverest \
-  --kube-context "$PROFILE" \
-  --namespace "$EVEREST_NS" \
-  --create-namespace \
-  --devel \
-  --version "$EVEREST_VERSION" \
-  --set-literal "server.initialAdminPassword=$UI_PASSWORD" \
-  --wait \
-  --timeout 30m
-unset UI_PASSWORD
-```
-
-Install the released provider chart. It installs KServe 0.21.0:
-
-```bash
-helm upgrade --install provider-kserve \
-  oci://ghcr.io/openeverest/charts/provider-kserve \
-  --kube-context "$PROFILE" \
-  --namespace "$EVEREST_NS" \
-  --version "$PROVIDER_VERSION" \
-  --wait \
-  --timeout 30m
-```
-
-Install monitoring before model creation:
-
-```bash
-kubectl --context "$PROFILE" create namespace "$MONITORING_NS" \
-  --dry-run=client -o yaml \
-  | kubectl --context "$PROFILE" apply -f -
-cat >/tmp/kube-prometheus-stack-values.yaml <<'EOF'
-alertmanager:
-  enabled: false
-grafana:
-  enabled: true
-kubeStateMetrics:
-  enabled: false
-nodeExporter:
-  enabled: false
-prometheus:
-  prometheusSpec:
-    retention: 2h
-    scrapeInterval: 15s
-    podMonitorSelectorNilUsesHelmValues: false
-    podMonitorSelector: {}
-    podMonitorNamespaceSelector: {}
-EOF
-helm upgrade --install observability \
-  prometheus-community/kube-prometheus-stack \
-  --kube-context "$PROFILE" \
-  --namespace "$MONITORING_NS" \
-  --version "$MONITORING_VERSION" \
-  --values /tmp/kube-prometheus-stack-values.yaml \
-  --wait \
-  --timeout 30m
-```
-
-Provision the released provider dashboard:
-
-```bash
-curl --fail --location \
-  --output /tmp/vllm-dashboard.json \
-  https://raw.githubusercontent.com/openeverest/provider-kserve/v0.5.0/docs/dashboards/vllm.json
-kubectl --context "$PROFILE" -n "$MONITORING_NS" create configmap \
-  grafana-dashboard-vllm \
-  --from-file=vllm.json=/tmp/vllm-dashboard.json \
-  --dry-run=client -o yaml \
-  | kubectl label --local -f - grafana_dashboard=1 -o yaml \
-  | kubectl --context "$PROFILE" apply -f -
-```
-
-Verify every release:
-
-```bash
-helm list --all-namespaces --kube-context "$PROFILE"
-kubectl --context "$PROFILE" -n "$EVEREST_NS" get pods
-kubectl --context "$PROFILE" -n "$MONITORING_NS" get pods
-kubectl --context "$PROFILE" get provider provider-kserve
-kubectl --context "$PROFILE" get crd \
-  instances.core.openeverest.io \
-  llminferenceservices.serving.kserve.io \
-  podmonitors.monitoring.coreos.com
-```
-
-Pre-pull the vLLM runtime image:
-
-```bash
-timeout 90m minikube -p "$PROFILE" image pull "$RUNTIME_IMAGE"
-```
-
-Gate: Helm shows four deployed releases. Platform Pods are ready. The Provider exists.
-
-## 5. Open the browser interfaces
-
-In terminal 3:
-
-```bash
-kubectl --context "$PROFILE" -n "$EVEREST_NS" \
-  port-forward svc/everest 8080:8080
-```
-
-In terminal 5:
-
-```bash
-kubectl --context "$PROFILE" -n "$MONITORING_NS" \
-  port-forward svc/observability-grafana 3000:80 \
-  >"$HOME/grafana-port-forward.log" 2>&1 &
-GRAFANA_FORWARD_PID=$!
-```
-
-Retrieve the Grafana password off-camera:
-
-```bash
-kubectl --context "$PROFILE" -n "$MONITORING_NS" \
-  get secret observability-grafana \
-  -o jsonpath='{.data.admin-password}' | base64 --decode
-printf '\n'
-```
-
-For a remote GPU host, forward ports 8080, 3000, and 8000 through SSH.
-
-Open `http://localhost:8080` and `http://localhost:3000`. Log in before recording.
-
-## 6. Create the model through the UI
-
-Open OpenEverest, then Instances. Click Create.
-
-Set the Instance fields:
+Set the model form:
 
 | Section | Field | Value |
 |---|---|---|
-| Instance | Namespace | `default` |
-| Instance | Name | `qwen-demo` |
-| Instance | Provider | `provider-kserve` |
-| Instance | Topology | `llm` |
 | Basic Information | Model | `Qwen3 0.6B` |
 | Basic Information | Image pull secret | Empty |
 | Basic Information | Served Model Name | `qwen3-0.6b` |
-| Basic Information | vLLM Runtime Version | Keep the default |
+| Basic Information | vLLM Runtime Version | Default |
 | Scaling & Parallelism | Replicas | `1` |
 | Scaling & Parallelism | Autoscaling | Off |
 | Scaling & Parallelism | Tensor parallel size | `1` |
 | Scaling & Parallelism | Pipeline parallel size | `1` |
 | Scaling & Parallelism | Data parallel size | `1` |
 | Scaling & Parallelism | Multi-node workers | Off |
-| Runtime | Compute Profile | GPU |
+| Runtime | Compute Profile | `GPU` |
 | Runtime | GPUs per pod | `1` |
 | Runtime | CPU | `2` |
 | Runtime | Memory | `16` GiB |
 | Engine Tuning | Max context length | `2048` |
 | Engine Tuning | Max concurrent sequences | `1` |
 | Engine Tuning | GPU memory utilization | `0.2` |
-| Routing | External access | `ClusterIP` |
+| LoRA Adapters | LoRA deployment | `Base model only` |
+| Routing | External access | `Envoy AI Gateway` |
+| Routing | Tokens per User per Hour | `300` |
+| Disaggregated Serving | Enable Prefill/Decode Disaggregation | Off |
 | Observability | vLLM Prometheus metrics | On |
 | Observability | Distributed tracing | Off |
+| Scheduling | Pod scheduling policy | Off |
+| Advanced | LLMInferenceServiceConfig | Empty |
 
-Keep precision, quantization, tool calling, reasoning, LoRA, and Advanced configuration on their defaults.
+Review the form and select Create.
 
-In terminal 2, start this watch before you submit:
+## 3. Terminal model alternative
+
+The live workshop uses the UI. For automated rehearsal, apply the same complete Instance spec:
 
 ```bash
-kubectl --context "$PROFILE" -n "$INSTANCE_NS" get \
-  instance,llminferenceservice,pod,svc,podmonitor -w
+kubectl apply -f manifests/qwen-demo-terminal.yaml
 ```
 
-Return to the UI. Review the values and click Create.
+Do not apply this manifest after the UI already created `qwen-demo`.
 
-Gate: `qwen-demo` appears in terminal 2. The UI is the only creation path.
-
-## 7. Prove the controller chain and readiness
-
-Run in terminal 1:
+## 4. Prove model readiness
 
 ```bash
-timeout 5m bash -c 'until kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" >/dev/null 2>&1; do sleep 5; done'
-kubectl -n "$INSTANCE_NS" get instance "$INSTANCE" -o wide
-kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" -o wide
-kubectl -n "$INSTANCE_NS" get deployment,pod,svc
+kubectl -n default get instance,llminferenceservice,pod,svc,podmonitor -w
 ```
 
-Wait for the vLLM Pod:
+After the model Pod appears, stop the watch and run:
 
 ```bash
-export MODEL_SELECTOR="app.kubernetes.io/name=$INSTANCE,kserve.io/component=workload"
-timeout 30m bash -c 'until [ -n "$(kubectl -n "$INSTANCE_NS" get pod -l "$MODEL_SELECTOR" -o jsonpath="{.items[0].metadata.name}" 2>/dev/null)" ]; do sleep 5; done'
-MODEL_POD=$(kubectl -n "$INSTANCE_NS" get pod \
+MODEL_SELECTOR='app.kubernetes.io/name=qwen-demo,kserve.io/component=workload'
+MODEL_POD=$(kubectl -n default get pod \
   -l "$MODEL_SELECTOR" \
   -o jsonpath='{.items[0].metadata.name}')
-kubectl -n "$INSTANCE_NS" wait \
+kubectl -n default wait \
   --for=condition=Ready pod/"$MODEL_POD" \
   --timeout=30m
-kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" -o wide
-kubectl -n "$INSTANCE_NS" get podmonitor
+kubectl -n default get instance qwen-demo -o wide
 ```
 
-If no PodMonitor exists, trigger one provider reconciliation:
+Gate: The Instance and vLLM Pod are ready.
+
+## 5. Show model connection details
+
+Open `qwen-demo`, then Connection details.
+
+| Field | Meaning |
+|---|---|
+| Base URL | OpenAI-compatible URL ending in `/v1`. |
+| API key | Model-owned System key. Keep it only for migration or administration. |
+| Model | Value for the OpenAI request `model` field. |
+
+Do not give the System key to every application.
+
+## 6. Create API keys in the Users tab
+
+Open the `qwen-demo` Users tab.
+
+The tab heading is API keys. The model-owned key appears as a System user.
+
+Select Create API key and set:
+
+| Field | Value |
+|---|---|
+| Name | `chat-app` |
+| Role | `invoke`, preselected |
+
+Select Create.
+
+The success dialog shows:
+
+- Name
+- API key
+- Base URL
+- Model
+
+Copy the API key, Base URL, and Model. The key is not view-once. Show credentials can retrieve it later.
+
+Repeat with Name `batch-job`.
+
+Wait until both rows show Ready.
+
+## 7. Load copied client values
+
+For local HTTPS, load the generated Gateway state first:
 
 ```bash
-kubectl -n "$INSTANCE_NS" annotate instance "$INSTANCE" \
-  "observability-demo-refresh=$(date +%s)" \
-  --overwrite
-kubectl -n "$INSTANCE_NS" get podmonitor -w
+GATEWAY_STATE=${XDG_STATE_HOME:-$HOME/.local/state}/openeverest-kserve-workshop/gateway.env
+set -a
+source "$GATEWAY_STATE"
+set +a
+if [ -n "${GATEWAY_CERT:-}" ]; then
+  export CURL_CA_BUNDLE="$GATEWAY_CERT"
+  export SSL_CERT_FILE="$GATEWAY_CERT"
+fi
 ```
 
-Gate: The serving Pod is ready, uses one GPU, and one PodMonitor exists.
-
-## 8. Call the OpenAI-compatible API
-
-In terminal 4:
+Load the UI values without printing the keys:
 
 ```bash
-kubectl --context "$PROFILE" -n "$INSTANCE_NS" \
-  port-forward svc/${INSTANCE}-kserve-workload-svc 8000:8000
+read -rsp 'Paste chat-app API key: ' OPENAI_API_KEY
+printf '\n'
+read -rp 'Paste Base URL: ' OPENAI_BASE_URL
+read -rp 'Paste Model: ' OPENAI_MODEL
+read -rsp 'Paste batch-job API key: ' BATCH_API_KEY
+printf '\n'
+export OPENAI_API_KEY OPENAI_BASE_URL OPENAI_MODEL BATCH_API_KEY
 ```
 
-In terminal 5:
+## 8. Call the model with curl
+
+No key returns `401`:
 
 ```bash
-curl --fail-with-body http://localhost:8000/v1/models | jq
-REQUEST_FILE=$(mktemp)
-cat >"$REQUEST_FILE" <<EOF
-{
-  "model": "${MODEL_NAME}",
-  "messages": [
-    {
-      "role": "user",
-      "content": "Explain why a Kubernetes controller uses desired state."
-    }
-  ],
-  "chat_template_kwargs": {
-    "enable_thinking": false
-  },
-  "max_tokens": 96,
-  "temperature": 0
-}
-EOF
-curl --fail-with-body http://localhost:8000/v1/chat/completions \
+curl --silent --output /dev/null --write-out '%{http_code}\n' \
+  "$OPENAI_BASE_URL/models"
+```
+
+Call the model with `chat-app`:
+
+```bash
+curl --fail-with-body \
+  "$OPENAI_BASE_URL/chat/completions" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H 'Content-Type: application/json' \
-  --data-binary "@$REQUEST_FILE" | jq
-rm -f "$REQUEST_FILE"
+  -d "{
+    \"model\": \"$OPENAI_MODEL\",
+    \"messages\": [
+      {
+        \"role\": \"user\",
+        \"content\": \"Explain this request path in three short steps.\"
+      }
+    ],
+    \"chat_template_kwargs\": {\"enable_thinking\": false},
+    \"max_tokens\": 96,
+    \"temperature\": 0
+  }" | jq
 ```
 
-Gate: The model list contains `qwen3-0.6b`. The chat request returns assistant text.
+## 9. Call the model from Go
 
-## 9. Show vLLM metrics and Grafana
-
-Run in terminal 5:
+The checked-in client uses `github.com/openai/openai-go/v3`.
 
 ```bash
-curl --fail-with-body http://localhost:8000/metrics | \
-  grep -F \
-    -e 'vllm:prompt_tokens_total' \
-    -e 'vllm:generation_tokens_total' \
-    -e 'vllm:request_success_total' \
-    -e 'vllm:time_to_first_token_seconds_count' \
-    -e 'vllm:e2e_request_latency_seconds_count'
-nvidia-smi
+cd clients/go
+go mod download
+go run .
+cd ../..
 ```
 
-Open Grafana. Select Dashboards, then Browse. Open dashboard UID `provider-kserve-vllm`.
+It reads:
 
-Set the range to Last 5 minutes and refresh to 5 seconds.
+- `OPENAI_API_KEY`
+- `OPENAI_BASE_URL`
+- `OPENAI_MODEL`
+- `SSL_CERT_FILE` for local self-signed TLS
 
-Show token throughput, running requests, waiting requests, time to first token, end-to-end latency, successes, and preemptions.
+## 10. Mount credentials in an application
 
-Gate: Direct counters are positive and Grafana shows the completed request.
-
-## 10. Show the generated resources
-
-Run in terminal 1:
+Find the generated credentials Secret:
 
 ```bash
-kubectl -n "$INSTANCE_NS" get instance,llminferenceservice,pod,svc,podmonitor
-kubectl -n "$INSTANCE_NS" get llminferenceservice "$INSTANCE" \
-  -o jsonpath='{.metadata.ownerReferences}{"\n"}'
-kubectl -n "$INSTANCE_NS" get pod "$MODEL_POD" \
-  -o jsonpath='{.metadata.labels}{"\n"}'
-kubectl -n "$INSTANCE_NS" describe pod "$MODEL_POD"
+CHAT_USER=$(kubectl -n default get instanceuser \
+  -l plugin-user-management.plugins.openeverest.io/instance=qwen-demo \
+  -o jsonpath='{range .items[?(@.spec.username=="chat-app")]}{.metadata.name}{"\n"}{end}')
+CHAT_SECRET=$(kubectl -n default get instanceuser "$CHAT_USER" \
+  -o jsonpath='{.status.credentialsSecret}')
+printf 'InstanceUser=%s\nCredentials Secret=%s\n' \
+  "$CHAT_USER" "$CHAT_SECRET"
 ```
 
-Explain this chain:
+Use [application-env.example.yaml](manifests/application-env.example.yaml) in a Deployment. Replace `CHAT_CREDENTIALS_SECRET` with the printed Secret name.
 
-```text
-OpenEverest Instance
-  -> provider-kserve 0.5.0
-  -> KServe LLMInferenceService 0.21.0
-  -> Deployment, Service, and vLLM Pod
-  -> NVIDIA GPU
-  -> OpenAI-compatible API and Prometheus metrics
+The Secret keys are:
+
+| Key | Application environment variable |
+|---|---|
+| `password` | `OPENAI_API_KEY` |
+| `uri` | `OPENAI_BASE_URL` |
+| `model` | `OPENAI_MODEL` |
+
+For GitOps, use [instanceuser-chat-app.yaml](manifests/instanceuser-chat-app.yaml).
+
+## 11. Prove separate quotas
+
+The model preset sets 300 tokens per user per hour. Valkey keeps one bucket per API-key ID and model.
+
+Use `chat-app` until it reaches `429`:
+
+```bash
+status=000
+for attempt in $(seq 1 20); do
+  status=$(curl --silent \
+    --output /tmp/chat-app-quota-response.json \
+    --write-out '%{http_code}' \
+    "$OPENAI_BASE_URL/chat/completions" \
+    -H "Authorization: Bearer $OPENAI_API_KEY" \
+    -H 'Content-Type: application/json' \
+    -d "{
+      \"model\": \"$OPENAI_MODEL\",
+      \"messages\": [
+        {
+          \"role\": \"user\",
+          \"content\": \"Write one hundred words about Kubernetes controllers.\"
+        }
+      ],
+      \"chat_template_kwargs\": {\"enable_thinking\": false},
+      \"max_tokens\": 128,
+      \"temperature\": 0
+    }")
+  printf 'chat-app attempt %s: HTTP %s\n' "$attempt" "$status"
+  if [ "$status" = 429 ]; then
+    break
+  fi
+done
+test "$status" = 429
 ```
 
-## 11. Show optional UI controls
+Call the same model with `batch-job`:
 
-Open a second unsaved Instance form. Do not submit it.
+```bash
+curl --fail-with-body \
+  "$OPENAI_BASE_URL/models" \
+  -H "Authorization: Bearer $BATCH_API_KEY" | jq
+```
 
-Point to CPU and GPU profiles, OCI model images, autoscaling, and LoRA.
+Gate: `chat-app` receives `429`. `batch-job` still works.
 
-Then point to tool calling, reasoning, AI Gateway routing, tracing, and multi-node workers.
+## 12. Show per-key metrics
 
-State that these controls are available. Do not call them verified workshop results.
+Find the stable `chat-app` key ID:
 
-Close the unsaved form.
+```bash
+CHAT_KEY_ID=$(kubectl -n default get secret \
+  -l 'openeverest.io/ai-gateway-key=true,openeverest.io/ai-gateway-key-owner-name=chat-app' \
+  -o jsonpath='{.items[0].metadata.annotations.openeverest\.io/ai-gateway-key-id}')
+printf 'chat-app key ID: %s\n' "$CHAT_KEY_ID"
+```
 
-## 12. Speaker timeline
+Open Grafana, then Dashboards. Show the vLLM and Envoy AI Gateway dashboards.
 
-| Time | Show | Say |
+In Explore, run:
+
+```promql
+sum by (openeverest_key_id, gen_ai_token_type) (
+  increase(gen_ai_client_token_usage_sum{gen_ai_token_type="total"}[1h])
+)
+```
+
+Match `CHAT_KEY_ID` to `openeverest_key_id`.
+
+## 13. Rotate and delete keys
+
+In the Users tab, open the `chat-app` Actions menu. Select Rotate API key.
+
+Keep the old value and paste the new value:
+
+```bash
+OLD_CHAT_API_KEY=$OPENAI_API_KEY
+read -rsp 'Paste the new chat-app API key: ' OPENAI_API_KEY
+printf '\n'
+export OPENAI_API_KEY
+```
+
+Test both keys:
+
+```bash
+curl --silent --output /dev/null --write-out '%{http_code}\n' \
+  "$OPENAI_BASE_URL/models" \
+  -H "Authorization: Bearer $OLD_CHAT_API_KEY"
+curl --fail-with-body \
+  "$OPENAI_BASE_URL/models" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" | jq
+unset OLD_CHAT_API_KEY
+```
+
+The old key returns `401`. The new key succeeds.
+
+Delete `batch-job` in the UI, then test it:
+
+```bash
+curl --silent --output /dev/null --write-out '%{http_code}\n' \
+  "$OPENAI_BASE_URL/models" \
+  -H "Authorization: Bearer $BATCH_API_KEY"
+```
+
+The deleted key returns `401`. `chat-app` remains valid.
+
+## 14. Show generated resources
+
+```bash
+kubectl -n default get \
+  instance,instanceuser,llminferenceservice,pod,svc,podmonitor
+kubectl -n everest-system get gateway,certificate
+kubectl -n default get secret \
+  -l openeverest.io/ai-gateway-key=true \
+  -o custom-columns='NAME:.metadata.name,OWNER:.metadata.labels.openeverest\.io/ai-gateway-key-owner-name,KEY-ID:.metadata.annotations.openeverest\.io/ai-gateway-key-id'
+```
+
+Do not print Secret data on screen.
+
+## 45-minute speaker timeline
+
+| Time | Show | Point |
 |---|---|---|
-| 0 to 5 minutes | Architecture | One Instance replaces hand-written serving resources. Controllers remain visible and inspectable. |
-| 5 to 12 minutes | OpenEverest form | The provider supplies the model catalog and technology-specific controls. |
-| 12 to 20 minutes | Resource watch | OpenEverest stores intent. provider-kserve creates KServe resources. KServe creates the serving workload. |
-| 20 to 25 minutes | API terminal | Pod readiness is not enough. A real OpenAI-compatible request proves inference. |
-| 25 to 32 minutes | Metrics and Grafana | Request counters and latency show client-visible health. |
-| 32 to 38 minutes | Generated resources | The abstraction keeps Kubernetes ownership, status, logs, and events visible. |
-| 38 to 42 minutes | Optional selectors | Show available controls without claiming untested paths. |
-| 42 to 45 minutes | Ready Instance | Summarize the proof and take questions. |
+| 0:00-0:05 | Outcome, folder tree, component flow | One repository contains the operator and consumer paths. |
+| 0:05-0:10 | Helm release table | provider-kserve installs KServe and both Envoy components. |
+| 0:10-0:18 | Preset-based UI creation | One preset defines the model, GPU, Gateway, quota, and metrics. |
+| 0:18-0:23 | Readiness and connection details | The provider creates the serving and connection resources. |
+| 0:23-0:29 | Users tab | Each application gets its own generated key and Secret. |
+| 0:29-0:34 | curl and Go | Both clients use Base URL, API key, and Model. |
+| 0:34-0:38 | Secret mounting | Applications consume credentials without putting keys in manifests. |
+| 0:38-0:42 | Quota, rotation, deletion | Consumer lifecycles are independent. |
+| 0:42-0:45 | Grafana | Token usage is attributable by stable key ID. |
 
-Use these closing lines:
+## Recovery
 
-```text
-We created one OpenEverest Instance through the UI.
-provider-kserve translated it into KServe resources.
-vLLM served a real OpenAI-compatible request on the GPU.
-Prometheus and Grafana showed what the model server did.
-```
-
-## 13. Recovery
-
-If the UI returns an error, stop. Capture the message and use the prepared recording.
-
-If the model Pod stays in init, inspect the model download:
+Check the model:
 
 ```bash
-kubectl -n "$INSTANCE_NS" describe pod "$MODEL_POD"
-kubectl -n "$INSTANCE_NS" logs "$MODEL_POD" -c storage-initializer --tail=150
+kubectl -n default get instance qwen-demo -o yaml
+kubectl -n default describe pod "$MODEL_POD"
+kubectl -n default logs "$MODEL_POD" -c main --tail=200
 ```
 
-If vLLM fails:
+Check Gateway and TLS:
 
 ```bash
-kubectl -n "$INSTANCE_NS" logs "$MODEL_POD" -c main --tail=200
-kubectl -n "$INSTANCE_NS" describe pod "$MODEL_POD"
+kubectl -n everest-system get gateway,certificate
+kubectl -n everest-system get certificaterequest,challenge,order
 ```
 
-If Grafana fails, show direct `/metrics` output. Do not hide a live failure.
-
-## 14. Cleanup
-
-Warning: These commands delete the workshop Instance and cluster.
-
-Stop the foreground port-forwards in terminals 3 and 4 with `Control+C`.
-
-In terminal 5:
+Check API-key users:
 
 ```bash
-if [ -n "${GRAFANA_FORWARD_PID:-}" ]; then
-  kill "$GRAFANA_FORWARD_PID"
-fi
+kubectl -n default get instanceuser -o wide
+kubectl -n everest-system logs \
+  deployment/plugin-user-management --tail=200
 ```
 
-Run the remaining cleanup in terminal 1:
+Check quota storage:
 
 ```bash
-kubectl -n "$INSTANCE_NS" delete instance "$INSTANCE" --ignore-not-found
-helm uninstall provider-kserve -n "$EVEREST_NS" --kube-context "$PROFILE"
-helm uninstall observability -n "$MONITORING_NS" --kube-context "$PROFILE"
-helm uninstall everest-core -n "$EVEREST_NS" --kube-context "$PROFILE"
-helm uninstall cert-manager -n cert-manager --kube-context "$PROFILE"
-minikube delete -p "$PROFILE"
-if [ -f "$HOME/.kserve-demo-bpf-jit-harden" ]; then
-  ORIGINAL_BPF_JIT_HARDEN=$(cat "$HOME/.kserve-demo-bpf-jit-harden")
-  sudo sysctl -w "net.core.bpf_jit_harden=$ORIGINAL_BPF_JIT_HARDEN"
-  rm -f "$HOME/.kserve-demo-bpf-jit-harden"
-fi
-rm -f /tmp/kube-prometheus-stack-values.yaml /tmp/vllm-dashboard.json
+kubectl -n everest-system get deployment,service demo-valkey
+kubectl -n everest-system logs deployment/demo-valkey --tail=100
+kubectl get backendtrafficpolicy -A
 ```
 
-Gate: The Minikube profile is absent and the original kernel hardening value is restored.
+## Cleanup
+
+Delete `qwen-demo` in the UI first. Confirm that its API-key users disappear.
+
+Stop the tunnel in terminal 2 with Ctrl-C.
+
+Then run:
+
+```bash
+CONFIRM_DELETE=all ./scripts/workshop.sh cleanup
+```
+
+The cleanup script deletes the cluster and restores `net.core.bpf_jit_harden`.
 
 ## Related documents
 
-- [Release sources](release-sources.md).
-- [Screenshot guide](../one-click-llm-deployment-screenshot-guide.md).
-- [Workshop page](../one-click-llm-deployment-workshop.md).
+- [Release and API source evidence](release-sources.md)
+- [Screenshot capture guide](../one-click-llm-deployment-screenshot-guide.md)
+- [Public workshop page](../one-click-llm-deployment-workshop.md)
 
-Final approval rests with the writer.
+Final wording approval rests with the workshop owner.

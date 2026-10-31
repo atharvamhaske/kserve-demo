@@ -4,32 +4,37 @@ A reproducible workshop for serving Qwen3 0.6B on an NVIDIA GPU with OpenEverest
 
 ## Open Source Hub workshop
 
-Start with the [all-in-one workshop runbook](docs/open-source-hub-workshop/README.md).
+Start with the [UI-first workshop module](docs/open-source-hub-workshop/README.md).
 
-It contains the latest compatible release pins, every cluster command, every OpenEverest UI step, speaker cues, recovery, and cleanup.
+It contains one script entry point, pinned Helm values, Kubernetes manifests, every UI selector, a Go client, recovery, and cleanup.
 
-The current path uses released provider-kserve 0.5.0 on native Ubuntu. It uses direct model delivery and no persistent model-delivery component.
+The current path uses provider-kserve 0.5.0 on native Ubuntu. It exposes Qwen3 0.6B through HTTPS and creates one API key per application.
 
 ## Quick start
 
-1. Open the [all-in-one runbook](docs/open-source-hub-workshop/README.md).
-2. Complete host, GPU, Minikube, and release installation sections before the event.
-3. Create `qwen-demo` through the OpenEverest UI.
-4. Verify the OpenAI-compatible API, vLLM metrics, and Grafana dashboard.
-5. Use the embedded 45-minute speaker timeline during the session.
+```bash
+cd docs/open-source-hub-workshop
+./scripts/workshop.sh prepare
+```
+
+Run `./scripts/workshop.sh tunnel` in terminal 2. Then run `https-local`, `verify`, and `ui` in terminal 1.
+
+Create `qwen-demo` from the `kserve-qwen-demo-gateway` preset. Create `chat-app` and `batch-job` in the Users tab.
 
 ## Workshop files
 
 ```text
-docs/
-├── open-source-hub-workshop/
-│   ├── README.md                            # All commands, UI steps, speaker cues, recovery, and cleanup
-│   └── release-sources.md                   # Current release and compatibility evidence
-├── one-click-llm-deployment-workshop.md     # Public workshop page
-├── one-click-llm-deployment-screenshot-guide.md
-└── assets/one-click-llm-deployment/
-    └── one-click-llm-deployment.ics         # Add to Calendar file
+docs/open-source-hub-workshop/
+├── README.md                 # UI-first runbook and speaker flow
+├── release-sources.md        # Release and API evidence
+├── scripts/                  # One operator entry point and staged commands
+├── config/                   # Pinned workshop versions
+├── values/                   # Provider and monitoring Helm values
+├── manifests/                # Valkey, preset, Instance, and Secret examples
+└── clients/go/               # OpenAI-compatible Go consumer
 ```
+
+The public page and screenshot guide are in `docs/one-click-llm-deployment-*`.
 
 ## Earlier verified WSL result
 

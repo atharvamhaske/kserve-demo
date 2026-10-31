@@ -1,0 +1,38 @@
+apiVersion: core.openeverest.io/v1alpha1
+kind: Instance
+metadata:
+  name: qwen-demo
+  namespace: default
+  annotations:
+    openeverest.io/instance-preset: kserve-qwen-demo-gateway
+spec:
+  providerRef:
+    name: provider-kserve
+  topology:
+    type: llm
+    parameters:
+      externalAccess: EnvoyAIGateway
+      tokenLimitPerHour: 300
+      enableMetrics: true
+  components:
+    llmEngine:
+      type: vllm
+      replicas: 1
+      resources:
+        requests:
+          cpu: "2"
+          memory: 16Gi
+      service:
+        serviceType: ClusterIP
+      parameters:
+        modelURI: hf://Qwen/Qwen3-0.6B
+        modelName: qwen3-0.6b
+        computeProfile: gpu
+        gpuCount: 1
+        tensorParallelSize: 1
+        pipelineParallelSize: 1
+        dataParallelSize: 1
+        engine:
+          maxModelLen: 2048
+          maxNumSeqs: 1
+          gpuMemoryUtilization: 0.2
