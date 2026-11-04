@@ -15,11 +15,14 @@ OUT = ROOT / "export" / "llm-request-to-kubernetes.pptx"
 
 # Talk track: 5 minutes total. Timings match the plan agreed for the session.
 NOTES = [
-    "0:00-0:15 · Title\n"
-    "Hi, I'm Atharva, an engineer at Cld9.ai. I work on provider-kserve at OpenEverest. "
-    "In the next five minutes I'll follow one LLM request through a Kubernetes cluster.",
+    "0:00-0:10 · Title\n"
+    "Hi, everyone. In the next five minutes I'll follow one LLM request through a Kubernetes cluster.",
 
-    "0:15-0:55 · The problem\n"
+    "0:10-0:25 · Who am I\n"
+    "I'm Atharva Mhaske, AI and Infra Engineer at Cld9.ai. I was a Google Summer of Code 2026 mentee, "
+    "I'm a member of the OpenTelemetry project, and I work on provider-kserve at OpenEverest.",
+
+    "0:25-0:55 · The problem\n"
     "Platform teams ship LLM features fast. Then production asks a basic question: where did this request go? "
     "The answer is rarely one Pod. Your app calls /v1/chat/completions, and inside the cluster the request passes "
     "DNS, a gateway, a proxy, an autoscaler and a Pod. When a 404, a hang, a 504 or a 429 comes back, "
@@ -53,9 +56,8 @@ NOTES = [
     "Only the component names change. Map the path, not the brand.",
 
     "4:40-5:00 · Thank you\n"
-    "I'm Atharva Mhaske, AI and Infra Engineer at Cld9.ai, a former GSoC 2026 mentee and an OpenTelemetry member. "
-    "Find me after the talk if you want to talk about LLM serving on Kubernetes, KServe or OpenTelemetry. "
-    "I'm github.com/atharvamhaske. Thank you.",
+    "Thank you. Scan the QR code to connect with me on LinkedIn, and find me after the talk "
+    "if you want to talk about LLM serving on Kubernetes, KServe or OpenTelemetry.",
 ]
 
 
