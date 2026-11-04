@@ -177,12 +177,11 @@ def request_path(s: Scene, broken=False):
 def whoami():
     """Slide 2, the speaker intro, after the speaker's own Excalidraw mock.
 
-    Only the drawing lives in the scene (logo, underline, bullet dots, photo frame).
+    Only the drawing lives in the scene (logo, bullet dots, photo frame).
     The text is set in Poppins in slides.html, to match the title slide.
     """
     s = Scene(2)
     s.image("brand/devcon-viii-logo.png", 44, 24, 154, 70)
-    s.line([(116, 448), (320, 454), (520, 446)], stroke=VIO, sw=4, curved=True)
     for i in range(4):
         y = 498 + i * 72
         s.ellipse(106, y + 14, 16, 16, stroke=INK, fill=VIO)

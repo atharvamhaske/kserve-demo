@@ -65,25 +65,23 @@
    "crop": null
   },
   {
-   "id": "s2-line-2",
-   "type": "line",
-   "x": 116,
-   "y": 448,
-   "width": 404,
-   "height": 8,
+   "id": "s2-ellipse-2",
+   "type": "ellipse",
+   "x": 106,
+   "y": 512,
+   "width": 16,
+   "height": 16,
    "angle": 0,
-   "strokeColor": "#7C3AED",
-   "backgroundColor": "transparent",
+   "strokeColor": "#5B21B6",
+   "backgroundColor": "#7C3AED",
    "fillStyle": "solid",
-   "strokeWidth": 4,
+   "strokeWidth": 2,
    "strokeStyle": "solid",
    "roughness": 1,
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 2003,
    "version": 1,
    "versionNonce": 14021,
@@ -91,30 +89,13 @@
    "boundElements": null,
    "updated": 1,
    "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0
-    ],
-    [
-     204,
-     6
-    ],
-    [
-     404,
-     -2
-    ]
-   ],
-   "startArrowhead": null,
-   "endArrowhead": null,
-   "polygon": false
+   "locked": false
   },
   {
    "id": "s2-ellipse-3",
    "type": "ellipse",
    "x": 106,
-   "y": 512,
+   "y": 584,
    "width": 16,
    "height": 16,
    "angle": 0,
@@ -141,7 +122,7 @@
    "id": "s2-ellipse-4",
    "type": "ellipse",
    "x": 106,
-   "y": 584,
+   "y": 656,
    "width": 16,
    "height": 16,
    "angle": 0,
@@ -168,7 +149,7 @@
    "id": "s2-ellipse-5",
    "type": "ellipse",
    "x": 106,
-   "y": 656,
+   "y": 728,
    "width": 16,
    "height": 16,
    "angle": 0,
@@ -192,34 +173,7 @@
    "locked": false
   },
   {
-   "id": "s2-ellipse-6",
-   "type": "ellipse",
-   "x": 106,
-   "y": 728,
-   "width": 16,
-   "height": 16,
-   "angle": 0,
-   "strokeColor": "#5B21B6",
-   "backgroundColor": "#7C3AED",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 2007,
-   "version": 1,
-   "versionNonce": 14049,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "s2-rectangle-7",
+   "id": "s2-rectangle-6",
    "type": "rectangle",
    "x": 1182,
    "y": 182,
@@ -238,9 +192,9 @@
    "roundness": {
     "type": 3
    },
-   "seed": 2008,
+   "seed": 2007,
    "version": 1,
-   "versionNonce": 14056,
+   "versionNonce": 14049,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
@@ -248,7 +202,7 @@
    "locked": false
   },
   {
-   "id": "s2-rectangle-8",
+   "id": "s2-rectangle-7",
    "type": "rectangle",
    "x": 1170,
    "y": 170,
@@ -267,9 +221,9 @@
    "roundness": {
     "type": 3
    },
-   "seed": 2009,
+   "seed": 2008,
    "version": 1,
-   "versionNonce": 14063,
+   "versionNonce": 14056,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
@@ -277,7 +231,7 @@
    "locked": false
   },
   {
-   "id": "s2-image-9",
+   "id": "s2-image-8",
    "type": "image",
    "x": 1274,
    "y": 186,
@@ -294,9 +248,9 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 2010,
+   "seed": 2009,
    "version": 1,
-   "versionNonce": 14070,
+   "versionNonce": 14063,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
