@@ -64,6 +64,32 @@ fi
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT
 
+key_model_ref="$instance_namespace/$instance_name"
+mapfile -t key_secrets < <(
+  kube -n "$instance_namespace" get secret \
+    -l "openeverest.io/ai-gateway-key=true,openeverest.io/ai-gateway-key-owner-kind=user,openeverest.io/ai-gateway-key-owner-name=$username" \
+    -o json |
+    jq -r --arg model_ref "$key_model_ref" '
+      .items[]
+      | select(
+          ((.metadata.annotations["openeverest.io/ai-gateway-models"] // "") | split(",") | index($model_ref))
+          != null
+        )
+      | .metadata.name
+    '
+)
+((${#key_secrets[@]} == 1)) || fail "expected one AI Gateway key Secret for $key_model_ref/$username, found ${#key_secrets[@]}"
+key_secret=${key_secrets[0]}
+key_id=$(kube -n "$instance_namespace" get secret "$key_secret" -o jsonpath='{.metadata.annotations.openeverest\.io/ai-gateway-key-id}')
+[[ -n $key_id ]] || fail "AI Gateway key Secret $key_secret has no key ID"
+
+kube -n "$instance_namespace" get podmonitor "$instance_name-metrics" >/dev/null
+prometheus_proxy="/api/v1/namespaces/$MONITORING_NS/services/http:prometheus-operated:9090/proxy"
+counter_query="sum%28gen_ai_client_token_usage_sum%7Bopeneverest_key_id%3D%22$key_id%22%7D%29%20or%20vector%280%29"
+series_query="gen_ai_client_token_usage_sum%7Bopeneverest_key_id%3D%22$key_id%22%7D"
+kube get --raw "$prometheus_proxy/api/v1/query?query=$counter_query" >"$tmp_dir/metrics-before"
+metrics_before=$(jq -r '.data.result[0].value[1] | tonumber' "$tmp_dir/metrics-before")
+
 no_key_status=$(curl "${curl_args[@]}" --output "$tmp_dir/no-key" --write-out '%{http_code}' "$base_url/models")
 [[ $no_key_status == 401 ]] || fail "expected no-key status 401, got $no_key_status"
 printf 'No-key authentication gate: 401\n'
@@ -111,21 +137,15 @@ printf '\nGo client response:\n'
     go run ./clients/go
 )
 
-key_id=$(
-  kube -n "$instance_namespace" get secret \
-    -l "openeverest.io/ai-gateway-key=true,openeverest.io/ai-gateway-key-owner-kind=user,openeverest.io/ai-gateway-key-owner-name=$username" \
-    -o jsonpath='{.items[0].metadata.annotations.openeverest\.io/ai-gateway-key-id}'
-)
-[[ -n $key_id ]] || fail "no AI Gateway key ID found for $username"
-
-kube -n "$instance_namespace" get podmonitor "$instance_name-metrics" >/dev/null
-prometheus_proxy="/api/v1/namespaces/$MONITORING_NS/services/http:prometheus-operated:9090/proxy"
-metrics_query="gen_ai_client_token_usage_sum%7Bopeneverest_key_id%3D%22$key_id%22%7D"
-
 for _ in {1..12}; do
-  kube get --raw "$prometheus_proxy/api/v1/query?query=$metrics_query" >"$tmp_dir/metrics"
-  if [[ $(jq '.data.result | length' "$tmp_dir/metrics") -gt 0 ]]; then
-    printf '\nGateway token metrics for key ID %s:\n' "$key_id"
+  kube get --raw "$prometheus_proxy/api/v1/query?query=$counter_query" >"$tmp_dir/metrics-after"
+  metrics_after=$(jq -r '.data.result[0].value[1] | tonumber' "$tmp_dir/metrics-after")
+  if jq -e -n \
+    --argjson before "$metrics_before" \
+    --argjson after "$metrics_after" \
+    '$after > $before' >/dev/null; then
+    kube get --raw "$prometheus_proxy/api/v1/query?query=$series_query" >"$tmp_dir/metrics"
+    printf '\nGateway token metrics for key ID %s increased from %s to %s:\n' "$key_id" "$metrics_before" "$metrics_after"
     jq '[.data.result[] | {token_type: .metric.gen_ai_token_type, value: .value[1]}]' "$tmp_dir/metrics"
     printf '\nAuthenticated inference, Go client, and metrics verification passed.\n'
     exit 0
@@ -133,4 +153,4 @@ for _ in {1..12}; do
   sleep 5
 done
 
-fail "Prometheus has no token metrics for key ID $key_id after 60 seconds"
+fail "Prometheus token metrics for key ID $key_id did not increase after the inference requests"
