@@ -18,13 +18,13 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 | # | Time | Slide | Takeaway |
 |---|---|---|---|
 | 1 | 0:00-0:10 | Title, speaker photo, name and "Engineer at Cld9.ai" | |
-| 2 | 0:10-0:25 | Who am I: bio in Poppins, and the photo in a hand-drawn Excalidraw frame, after the speaker's mock | |
+| 2 | 0:10-0:25 | Who am I: heading, name and bio in the title slide's type, and the photo in a hand-drawn Excalidraw frame | |
 | 3 | 0:25-0:55 | The problem from the talk abstract. Where did this request go? Your app calls `/v1/chat/completions`, the cluster hides DNS, gateway, proxy, autoscaler and Pod, and a 404, a hang, a 504 or a 429 comes back. | Teams debug the symptom because they never mapped the path. |
 | 4 | 0:55-1:50 | Client, DNS + Service, Gateway, Model proxy, scale from zero, then a vLLM (GPU) or Ollama (CPU) Pod streams tokens back | It's never one Pod. |
 | 5 | 1:50-2:50 | The same path with each failure marked on its hop | |
 | 6 | 2:50-3:55 | The provider-kserve flow. You create an Instance. provider-kserve reconciles it into an LLMInferenceService or InferenceService. The KServe controllers create Deployments, HPAs, Services and Routes. provider-kserve writes the status and endpoint back to the Instance. | Declare intent. Get an endpoint back. |
 | 7 | 3:55-4:40 | KServe, KubeAI and a hand-rolled stack on the same four hops | Map the path, not the brand. |
-| 8 | 4:40-5:00 | Thank you and a LinkedIn QR code on the left, and the official Devcon 8 India artwork of the Gateway of India in a frame on the right | |
+| 8 | 4:40-5:00 | Thank you and a LinkedIn QR code on the left, and the DevCon diamond artwork with the OTS lightning-talk badge on the right, as on the title slide | |
 
 ## Style
 
@@ -36,7 +36,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 
 ## Assets
 
-- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork and the round speaker photo out of it, with transparent backgrounds. The folder also holds `devcon-8-india-bg.jpg`, the official Devcon 8 India artwork from devcon.org, used on slide 8, and `speaker-cutout.png` for slide 2. It is the speaker's mirror selfie, flipped so the T-shirt text reads correctly, with the background removed by [rembg](https://github.com/danielgatis/rembg). The `u2net_human_seg` model finds the person and `isnet-general-use` keeps the phone.
+- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork (used on slides 1 and 8) and the round speaker photo out of it, with transparent backgrounds. The folder also holds `speaker-cutout.png` for slide 2. It is the speaker's mirror selfie, flipped so the T-shirt text reads correctly, with the background removed by [rembg](https://github.com/danielgatis/rembg). The `u2net_human_seg` model finds the person and `isnet-general-use` keeps the phone.
 - `src/assets/k8s/` holds the official Kubernetes icons from [kubernetes/community](https://github.com/kubernetes/community/tree/master/icons).
 - `src/assets/logos/` holds the Kubernetes, KServe, vLLM, Ollama, FOSSASIA and OpenEverest logos. The OpenEverest logo comes from its brand kit.
 - `src/assets/fonts/` holds Poppins, under the SIL Open Font License.

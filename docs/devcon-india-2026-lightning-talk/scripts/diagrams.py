@@ -182,10 +182,10 @@ def whoami():
     """
     s = Scene(2)
     s.image("brand/devcon-viii-logo.png", 44, 24, 154, 70)
-    s.line([(76, 316), (390, 321), (702, 310)], stroke=INK, sw=3, curved=True)
+    s.line([(116, 392), (300, 398), (470, 390)], stroke=VIO, sw=4, curved=True)
     for i in range(4):
-        y = 382 + i * 130
-        s.ellipse(91, y + 16, 22, 22, stroke=INK, fill=INK)
+        y = 528 + i * 72
+        s.ellipse(106, y + 14, 16, 16, stroke=INK, fill=VIO)
     # the photo in a double hand-drawn frame
     s.rect(1182, 182, 680, 766, stroke=MUTED, fill="transparent", sw=1.5)
     s.rect(1170, 170, 690, 770, stroke=TXT, fill=PAPER, sw=2.5)

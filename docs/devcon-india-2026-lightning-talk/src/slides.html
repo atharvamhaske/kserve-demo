@@ -164,15 +164,16 @@ function slide2() {
   const c = ctxFor(2); chrome(c);
   img(c, 'diagrams/slide-02.svg', 0, 0, 1920, 1080);
   text(c, 1380, 38, 500, 'Mumbai, India · 5 Nov 2026', 'desc', 'font-size:24px;text-align:right;color:' + MUTED);
-  text(c, 82, 104, 900, 'Who am I', 'h1', 'font-size:48px');
-  text(c, 78, 180, 1060, 'Atharva Mhaske', 'h1', 'font-size:92px;line-height:1.3');
+  // Same type scale as the title slide: the heading like the talk title, the name like the speaker line.
+  text(c, 110, 280, 1040, 'Who am I', 'h1', 'font-size:70px;line-height:1.32');
+  text(c, 112, 422, 1040, 'Atharva Mhaske', 'desc', 'font-size:44px;color:#4B4763');
   ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 Mentee', 'Member @OpenTelemetry project',
-   'I love FOSS and contribute to multiple<br>OSS projects under CNCF'].forEach((t, i) => {
-    text(c, 140, 382 + i * 130, 1000, t, 'desc', 'font-size:38px;line-height:1.4');
+   'I love FOSS and contribute to multiple OSS projects under CNCF'].forEach((t, i) => {
+    text(c, 140, 528 + i * 72, 1020, t, 'desc', 'font-size:29px');
   });
 }
 
-/** Slide 8: thank you and the LinkedIn QR code on the left, the Devcon 8 India artwork on the right. */
+/** Slide 8: thank you and the LinkedIn QR code on the left, the DevCon artwork on the right. */
 function slide8() {
   const c = ctxFor(8); chrome(c);
   c.el.querySelector('.pageno').remove();
@@ -184,12 +185,8 @@ function slide8() {
   text(c, 112, 750, 640, 'Scan to connect on LinkedIn', 'desc', 'font-size:30px;font-weight:500');
   text(c, 112, 798, 640, 'linkedin.com/in/atharavxdevs', 'desc', 'font-size:24px;color:' + MUTED);
 
-  // the Gateway of India, from the official Devcon 8 India artwork, in a hand-drawn frame
-  const X = 760, Y = 168, W = 1060, H = 596;
-  put(c, c.rc.rectangle(X - 14, Y - 14, W + 28, H + 28, opts({ fill: PAPER, fillStyle: 'solid', strokeWidth: 2.5, stroke: TXT })));
-  put(c, c.rc.rectangle(X - 4, Y - 2, W + 26, H + 26, opts({ stroke: MUTED, strokeWidth: 1.5 })));
-  img(c, 'assets/brand/devcon-8-india-bg.jpg', X, Y, W, H, 'object-fit:cover;border-radius:6px');
-  text(c, X, Y + H + 26, W, 'Gateway of India, Mumbai · artwork: Devcon 8 India', 'desc', 'font-size:20px;text-align:right;color:' + MUTED);
+  // the official DevCon VIII artwork and OTS lightning-talk badge, as on the title slide
+  img(c, 'assets/brand/devcon-hero-art.png', 1236, 216, 684, 864);
 }
 
 Promise.all([400, 500, 600, 700].map(w => document.fonts.load(w + ' 24px Poppins'))).then(() => {
