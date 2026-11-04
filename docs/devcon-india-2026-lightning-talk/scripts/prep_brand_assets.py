@@ -1,5 +1,5 @@
-"""Cut the DevCon logo, FOSSASIA/OTS logos and DevCon diamond artwork out of the
-official title slide, so every slide uses the same artwork as the session banner.
+"""Cut the DevCon logo, FOSSASIA/OTS logos, DevCon diamond artwork and speaker photo
+out of the official title slide, so every slide uses the same artwork as the session banner.
 
 The title slide sits on a soft lavender gradient. Each crop is converted to a
 transparent PNG by removing that local background colour ("colour to alpha"),
@@ -11,7 +11,7 @@ Usage: python3 scripts/prep_brand_assets.py
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT = Path(__file__).resolve().parents[1]
 BRAND = ROOT / "src" / "assets" / "brand"
@@ -90,6 +90,15 @@ def main() -> None:
         keyed = colour_to_alpha(crop)
         keyed.resize((crop.width * 3, crop.height * 3), Image.LANCZOS).save(BRAND / name)
         print("wrote", BRAND / name)
+
+    # Speaker photo: the circular crop from the title slide, used on slide 1.
+    cx, cy, r = 172, 860, 54
+    face = title.crop((cx - r, cy - r, cx + r, cy + r)).resize((432, 432), Image.LANCZOS)
+    mask = Image.new("L", face.size, 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, 431, 431), fill=255)
+    face.putalpha(mask)
+    face.save(BRAND / "speaker-photo.png")
+    print("wrote", BRAND / "speaker-photo.png")
 
 
 if __name__ == "__main__":

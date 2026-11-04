@@ -1,7 +1,6 @@
 // Render src/slides.html to PNG (3840x2160) and a vector PDF, and copy the Excalidraw sources.
 // Run scripts/diagrams.py and scripts/render_diagrams.js first (or `npm run build`).
 // Usage (from the deck folder): node scripts/build.js
-// If src/assets/brand/devcon-8-india-bg.png exists, slide 7 uses it instead of the sketch.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -9,8 +8,7 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'export');
 const SRC = path.join(ROOT, 'src', 'slides.html');
-const art = fs.existsSync(path.join(ROOT, 'src/assets/brand/devcon-8-india-bg.png')) ? '1' : '0';
-const url = 'file://' + SRC + '?art=' + art;
+const url = 'file://' + SRC;
 const only = process.argv[2] ? Number(process.argv[2]) : null; // optional: render one slide
 
 (async () => {

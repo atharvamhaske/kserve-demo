@@ -20,9 +20,10 @@ NOTES = [
     "In the next five minutes I'll follow one LLM request through a Kubernetes cluster.",
 
     "0:15-0:55 · The problem\n"
-    "Your app calls /v1/chat/completions. It looks like one HTTP call. "
-    "Inside the cluster it passes DNS, a gateway, a proxy, an autoscaler and a Pod. "
-    "Platform teams can't see that path, so a 404, a hang, a 504 or a 429 arrives and nobody can say which hop sent it.",
+    "Platform teams ship LLM features fast. Then production asks a basic question: where did this request go? "
+    "The answer is rarely one Pod. Your app calls /v1/chat/completions, and inside the cluster the request passes "
+    "DNS, a gateway, a proxy, an autoscaler and a Pod. When a 404, a hang, a 504 or a 429 comes back, "
+    "teams debug the symptom because they never mapped the path.",
 
     "0:55-1:50 · The path\n"
     "The client sends an OpenAI-style request. DNS and a Service turn the name into an IP. "

@@ -196,15 +196,16 @@ def slide2():
         s.text(1540, y + 30, 260, desc, 26)
         s.arrow([(1266, 690), (1322, 690 + (y + 46 - 690) * 0.6), (1384, y + 46)], k8s, box,
                 stroke=VIO, curved=True)
+    s.center(960, 944, "Teams debug the symptom because they never mapped the path.", 40, INK)
     s.save()
 
 
 def slide3():
     s = Scene(3)
     boxes = request_path(s)
-    s.image("k8s/hpa.svg", GX - 30, 392, 60, 60)
-    s.center(GX, 452, "scale from zero", 20, VIO)
-    s.line([(GX, 494), (GX, MID - 12)], stroke=VIO, dashed=True)
+    s.image("k8s/hpa.svg", GX - 30, 380, 60, 60)
+    s.center(GX, 440, "scale from zero", 20, VIO)
+    s.line([(GX, 504), (GX, MID - 12)], stroke=VIO, dashed=True)
 
     s.arrow([(PC[4], PY + PH + 6), (PC[4], LANE), (PC[0], LANE), (PC[0], PY + PH + 6)], boxes[4], boxes[0],
             stroke=VIO, dashed=True)

@@ -9,7 +9,7 @@
   1920x1080 slide. The diagrams on slides 2 to 6 are Excalidraw scenes
   (src/diagrams/*.excalidraw, written by scripts/diagrams.py) rendered to SVG by
   Excalidraw itself (scripts/render_diagrams.js). Slides 1 and 7 draw their
-  sketches with rough.js, the library Excalidraw uses for its strokes.
+  few sketch strokes with rough.js, the library Excalidraw uses.
 -->
 <style>
   @font-face { font-family: Inter; font-weight: 100 900; src: url(assets/fonts/Inter.ttf); }
@@ -77,7 +77,6 @@
 <script>
 const INK = '#5B21B6', VIO = '#7C3AED', SOFT = '#C4B5FD', TXT = '#1E1B2E', MUTED = '#5E5A75', PAPER = '#FFFFFF';
 const TOTAL = 7;
-const params = new URLSearchParams(location.search);
 
 /* ---------- small drawing kit for the sketches on slides 1 and 7 ---------- */
 let SEED = 7;
@@ -89,7 +88,6 @@ function ctxFor(n) {
 const opts = (o = {}) => Object.assign({ stroke: INK, strokeWidth: 3, roughness: 1.1, bowing: 1.1, seed: SEED++ }, o);
 const put = (c, node) => (c.svg.appendChild(node), node);
 function circle(c, cx, cy, d, o = {}) { put(c, c.rc.ellipse(cx, cy, d, d, opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o)))); }
-function poly(c, pts, o = {}) { put(c, c.rc.polygon(pts, opts(o))); }
 function line(c, pts, o = {}) { const oo = opts(o); put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo)); }
 function underline(c, x1, x2, y) {
   line(c, [[x1, y], [(x1 + x2) / 2, y + 6], [x2, y - 2]], { curve: true, stroke: VIO, strokeWidth: 5, roughness: 1.4 });
@@ -109,43 +107,51 @@ function img(c, src, x, y, w, h, style = '') {
   c.el.appendChild(i);
   return i;
 }
-function chrome(c) {
-  c.el.insertAdjacentHTML('beforeend', `
+/** Footer logos and page number on every slide. The DevCon logo and place line only on the title. */
+function chrome(c, top = false) {
+  if (top) c.el.insertAdjacentHTML('beforeend', `
     <img class="abs devcon" src="assets/brand/devcon-viii-logo.png" alt="DevCon VIII India">
-    <div class="abs place">MUMBAI, INDIA · 5 NOV 2026<small>OTS Main Stage · 16:05 IST</small></div>
+    <div class="abs place">MUMBAI, INDIA · 5 NOV 2026<small>OTS Main Stage · 16:15 IST</small></div>`);
+  c.el.insertAdjacentHTML('beforeend', `
     <img class="abs foss" src="assets/brand/fossasia-ots-logos.png" alt="FOSSASIA and OTS">
     <div class="abs divider"></div>
     <img class="abs oe" src="assets/logos/oe-logo-horizontal-full-color-white.svg" alt="OpenEverest">
     <div class="abs pageno"><b>${c.n}</b> / ${TOTAL}</div>`);
 }
 function heading(c, kicker, h1) {
-  text(c, 112, 238, 1200, kicker, 'kicker');
-  text(c, 110, 272, 1700, h1, 'h1');
+  text(c, 112, 88, 1200, kicker, 'kicker');
+  text(c, 110, 122, 1700, h1, 'h1');
 }
 /** A content slide: chrome, heading, and its Excalidraw diagram on top. */
+// Each scene is laid out in slide coordinates. FIT gives the vertical centre of its
+// content and how far to move it, so it sits centred between the heading and the
+// footer, slightly enlarged now that the top of the slide is free.
+const FIT = { 2: [732, -126], 3: [648, -68], 4: [643, -63], 5: [688, -108], 6: [655, -75] }, ZOOM = 1.06;
 function diagramSlide(n, kicker, h1, lede) {
   const c = ctxFor(n); chrome(c);
   heading(c, kicker, h1);
-  if (lede) text(c, 112, 352, 1500, lede, 'lede');
-  img(c, `diagrams/slide-0${n}.svg`, 0, 0, 1920, 1080);
+  if (lede) text(c, 112, 202, 1500, lede, 'lede');
+  const [cy, dy] = FIT[n];
+  img(c, `diagrams/slide-0${n}.svg`, 0, 0, 1920, 1080,
+      `transform-origin:960px ${cy}px;transform:translateY(${dy}px) scale(${ZOOM})`);
 }
 
 /* ---------- slides ---------- */
 function slide1() {
-  const c = ctxFor(1); chrome(c);
+  const c = ctxFor(1); chrome(c, true);
   c.el.querySelector('.pageno').remove();
   img(c, 'assets/brand/devcon-hero-art.png', 1236, 216, 684, 864);
   text(c, 110, 316, 1120, 'What actually happens when you send an LLM request to Kubernetes?', 'h1',
        'top:300px;width:1130px;font-size:72px;line-height:1.14');
-  img(c, 'assets/brand/speaker-face.png', 112, 660, 108, 108);
+  img(c, 'assets/brand/speaker-photo.png', 112, 660, 108, 108);
   circle(c, 166, 714, 120, { fill: 'none', stroke: VIO, strokeWidth: 3 });
   text(c, 250, 670, 800, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:40px;font-weight:700');
   text(c, 250, 726, 800, 'Engineer at Cld9.ai', 'desc', 'font-size:26px;font-weight:400;color:' + MUTED);
 }
 
 const DIAGRAM_SLIDES = [
-  [2, 'The problem', 'You called <em>/v1/chat/completions</em>. Then what?',
-   "Platform teams can't see the path, so LLM calls fail in ways nobody can explain."],
+  [2, 'The problem', 'Where did this request go?',
+   'Platform teams ship LLM features fast. In production, one chat completion is rarely one Pod.'],
   [3, 'The path', 'Follow one request, hop by hop'],
   [4, 'Where it breaks', 'Each hop fails in its own way'],
   [5, 'How OpenEverest solved it', 'provider-kserve turns an Instance into an endpoint'],
@@ -155,78 +161,22 @@ const DIAGRAM_SLIDES = [
 function slide7() {
   const c = ctxFor(7); chrome(c);
   c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
-  text(c, 108, 262, 900, 'Thank you', 'take', 'text-align:left;font-size:108px;color:' + TXT);
-  underline(c, 116, 402, 404);
+  text(c, 108, 150, 900, 'Thank you', 'take', 'text-align:left;font-size:108px;color:' + TXT);
+  underline(c, 116, 402, 292);
 
-  text(c, 112, 444, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
+  text(c, 112, 336, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
   const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
                'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
   bio.forEach((t, i) => {
-    const y = 518 + i * 46;
+    const y = 412 + i * 48;
     circle(c, 124, y + 17, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
-    text(c, 146, y, 860, t, 'desc', 'font-size:26px;font-weight:400');
+    text(c, 146, y, 860, t, 'desc', 'font-size:27px;font-weight:400');
   });
-  text(c, 112, 742, 800, 'github.com/atharvamhaske', 'lab', 'text-align:left;font: 600 30px "Geist Mono", monospace;color:' + INK);
+  text(c, 112, 648, 800, 'github.com/atharvamhaske', 'lab', 'text-align:left;font: 600 30px "Geist Mono", monospace;color:' + INK);
 
-  // soft violet disc behind the speaker, drawn first so the sketch and photo sit on top
-  circle(c, 1700, 640, 520, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
-  if (params.get('art') === '1') {
-    img(c, 'assets/brand/devcon-8-india-bg.png', 1000, 420, 700, 520, 'object-position:left bottom');
-  } else {
-    gatewayOfIndia(c, 1070, 900, 0.76);
-  }
-  // the speaker, cut out from the event photo, standing in front of the Gateway
-  img(c, 'assets/brand/speaker-cutout.png', 1500, 272, 384, 808, 'object-fit:cover;object-position:top');
-}
-
-/* Gateway of India, Mumbai: a hand-drawn front elevation in violet ink. */
-function gatewayOfIndia(c, x0, ground, s) {
-  const X = v => x0 + v * s, Y = v => ground - v * s;
-  const wall = { fill: SOFT, fillStyle: 'hachure', hachureGap: 11, hachureAngle: 41, fillWeight: 1.6, strokeWidth: 3 };
-  const open = { fill: '#F4F2FF', fillStyle: 'solid', strokeWidth: 2.5 };
-  const archPath = (l, r, spring, apex, base) => {
-    const m = (l + r) / 2, w = r - l;
-    return `M${X(l)},${Y(base)} L${X(l)},${Y(spring)} C${X(l)},${Y(spring + (apex - spring) * .55)} ${X(m - w * .18)},${Y(apex - 6)} ${X(m)},${Y(apex)}` +
-           ` C${X(m + w * .18)},${Y(apex - 6)} ${X(r)},${Y(spring + (apex - spring) * .55)} ${X(r)},${Y(spring)} L${X(r)},${Y(base)} Z`;
-  };
-  const P = (d, o) => put(c, c.rc.path(d, opts(o)));
-  const R = (l, b, r, t, o) => P(`M${X(l)},${Y(b)} H${X(r)} V${Y(t)} H${X(l)} Z`, o);
-
-  // plinth and steps
-  R(-30, 0, 790, 22, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 3 });
-  line(c, [[X(-10), Y(11)], [X(770), Y(11)]], { stroke: SOFT, strokeWidth: 2 });
-  // side wings
-  R(0, 22, 200, 250, wall); R(560, 22, 760, 250, wall);
-  // central block
-  R(200, 22, 560, 390, wall);
-  // parapet bands and jali ticks
-  R(200, 390, 560, 420, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
-  for (let v = 214; v < 556; v += 18) line(c, [[X(v), Y(394)], [X(v), Y(416)]], { stroke: INK, strokeWidth: 1.6, roughness: .5 });
-  R(0, 250, 200, 270, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
-  R(560, 250, 760, 270, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
-  // central arch, side arches, upper windows
-  P(archPath(282, 478, 230, 330, 22), open);
-  P(archPath(306, 454, 220, 300, 22), { fill: 'none', strokeWidth: 1.8, stroke: VIO });
-  P(archPath(60, 140, 140, 196, 22), open); P(archPath(620, 700, 140, 196, 22), open);
-  P(archPath(232, 262, 290, 320, 250), open); P(archPath(498, 528, 290, 320, 250), open);
-  // four turrets on the central block, two on the wings
-  const turret = (l, w, base, h) => {
-    R(l, base, l + w, base + h, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
-    P(`M${X(l - 4)},${Y(base + h)} Q${X(l + w / 2)},${Y(base + h + w * 1.15)} ${X(l + w + 4)},${Y(base + h)} Z`, { fill: SOFT, fillStyle: 'solid', strokeWidth: 2.5 });
-    line(c, [[X(l + w / 2), Y(base + h + w * .58)], [X(l + w / 2), Y(base + h + w * .58 + 18)]], { strokeWidth: 2.5, roughness: .4 });
-  };
-  turret(196, 44, 420, 70); turret(520, 44, 420, 70); turret(300, 34, 420, 44); turret(426, 34, 420, 44);
-  turret(-6, 36, 270, 40); turret(730, 36, 270, 40);
-  // central crest
-  P(`M${X(350)},${Y(420)} Q${X(380)},${Y(500)} ${X(410)},${Y(420)} Z`, { fill: VIO, fillStyle: 'hachure', hachureGap: 6, strokeWidth: 2.5 });
-  // the sea in front, and two gulls
-  [[-70, -26], [-30, -50]].forEach(([dx, dy], k) => {
-    const pts = []; for (let v = -60 + dx; v <= 840; v += 50) pts.push([X(v), Y(dy + (pts.length % 2 ? 7 : -7))]);
-    line(c, pts, { curve: true, stroke: k ? SOFT : VIO, strokeWidth: 2.5, roughness: .9 });
-  });
-  [[80, 520], [150, 560]].forEach(([bx, by]) =>
-    line(c, [[X(bx - 22), Y(by + 6)], [X(bx - 9), Y(by + 12)], [X(bx), Y(by)], [X(bx + 9), Y(by + 12)], [X(bx + 22), Y(by + 6)]], { curve: true, stroke: INK, strokeWidth: 2.5 }));
-  text(c, X(380) - 240, Y(-70), 480, 'Gateway of India, Mumbai', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
+  // the speaker, cut out from the event photo, on a soft violet disc
+  circle(c, 1600, 600, 640, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
+  img(c, 'assets/brand/speaker-cutout.png', 1382, 150, 436, 930, 'object-fit:cover;object-position:top');
 }
 
 Promise.all([400, 500, 600, 700].flatMap(w => [document.fonts.load(w + ' 24px Inter'), document.fonts.load(w + ' 24px "Geist Mono"')])).then(() => {
