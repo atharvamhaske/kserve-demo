@@ -34,9 +34,14 @@ start_forward() {
   done
 }
 
-
 start_forward everest "$EVEREST_NS" everest 8080:8080
 start_forward grafana "$MONITORING_NS" observability-grafana 3000:80
+if kube -n headlamp get service/headlamp >/dev/null 2>&1; then
+  start_forward headlamp headlamp headlamp 4466:80
+fi
 
 printf 'OpenEverest: http://localhost:8080\n'
 printf 'Grafana: http://localhost:3000\n'
+if kube -n headlamp get service/headlamp >/dev/null 2>&1; then
+  printf 'Headlamp: http://localhost:4466\n'
+fi

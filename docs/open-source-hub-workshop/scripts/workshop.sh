@@ -29,6 +29,11 @@ case "$command_name" in
   https-public) exec "$script_dir/31-enable-public-https.sh" ;;
   verify) exec "$script_dir/40-verify.sh" ;;
   inference) exec "$script_dir/60-test-inference.sh" "${@:2}" ;;
+  headlamp) exec "$script_dir/55-deploy-headlamp.sh" ;;
+  dashboard)
+    cd "$script_dir/.."
+    exec tilt up --file Tiltfile
+    ;;
   ui) exec "$script_dir/50-open-ui.sh" ;;
   cleanup) exec "$script_dir/90-cleanup.sh" ;;
   help | --help | -h)
@@ -47,7 +52,9 @@ Commands:
   https-public  Create a Let's Encrypt nip.io HTTPS endpoint.
   verify        Check releases, CRDs, presets, Gateway, and HTTPS auth.
   inference      Verify authenticated curl, Go, and metrics paths for one InstanceUser.
-  ui            Start OpenEverest and Grafana port-forwards.
+  headlamp      Deploy the bundled Headlamp LLM control plane.
+  dashboard     Open the Tilt dashboard for health, inference, and Headlamp.
+  ui            Start OpenEverest, Grafana, and Headlamp port-forwards.
   cleanup       Delete the workshop after CONFIRM_DELETE=all.
 EOF
     ;;
