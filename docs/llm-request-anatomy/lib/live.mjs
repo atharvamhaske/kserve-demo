@@ -16,10 +16,7 @@ const storyWhat = document.querySelector("[data-story-what]");
 const storyWatch = document.querySelector("[data-story-watch]");
 const still = matchMedia("(prefers-reduced-motion: reduce)");
 
-<<<<<<< HEAD
 const LABEL_BOXES = Object.fromEntries([...svg.querySelectorAll(".iso-label[data-box]")].map((el) => [el.dataset.id, el.dataset.box.split(",").map(Number)]));
-=======
->>>>>>> origin/main
 const nodes = [...layer.children].map((el) => ({ el, key: Number(el.dataset.k), name: el.dataset.live || null, svg: null }));
 const byName = Object.fromEntries(nodes.filter((n) => n.name).map((n) => [n.name, n]));
 let order = nodes.map((n) => n.el);
@@ -48,11 +45,7 @@ function draw(pose, dt) {
     if (node.key !== item.key) { node.key = item.key; node.el.dataset.k = item.key.toFixed(2); }
   }
   resort();
-<<<<<<< HEAD
   const text = hovered && STATION_TEXT[hovered] ? STATION_TEXT[hovered] : pose.readout;
-=======
-  const text = hovered ? STATION_TEXT[hovered] : pose.readout;
->>>>>>> origin/main
   if (readout.textContent !== text) readout.textContent = text;
   const phase = hovered ? "" : pose.step.kind + (pose.step.station || "") + (pose.request ?? "");
   if (phase !== lastPhase) { lastPhase = phase; if (!hovered) { stage.setAttribute("aria-valuetext", pose.readout); if (phaseLive) phaseLive.textContent = pose.readout; } }
@@ -64,11 +57,7 @@ function draw(pose, dt) {
     svg.querySelectorAll(".iso-label").forEach((el) => { const mine = el.dataset.id === focus || (focus === "key" && el.dataset.id === "bin401" && pose.step.reject) || (focus === "meter" && el.dataset.id === "bin429" && pose.step.reject); if (mine) el.setAttribute("data-on", ""); else el.removeAttribute("data-on"); });
   }
   // the story under the card follows the step
-<<<<<<< HEAD
   const story = hovered && STATION_TEXT[hovered] ? [STATION_TEXT[hovered].split(" · ")[0], STATION_TEXT[hovered], ""] : storyOf(pose.step);
-=======
-  const story = hovered ? [STATION_TEXT[hovered].split(" · ")[0], STATION_TEXT[hovered], ""] : storyOf(pose.step);
->>>>>>> origin/main
   if (storyNow && storyNow.textContent !== story[0]) { storyNow.textContent = story[0]; storyWhat.textContent = story[1]; storyWatch.textContent = story[2]; }
 }
 
@@ -96,10 +85,7 @@ const toViewBox = (event) => {
   return [((event.clientX - box.left) / box.width) * vb.width, ((event.clientY - box.top) / box.height) * vb.height];
 };
 const stationAt = ([x, y]) => {
-<<<<<<< HEAD
   for (const [id, [x0, y0, x1, y1]] of Object.entries(LABEL_BOXES)) if (x >= x0 - 2 && x <= x1 + 2 && y >= y0 - 2 && y <= y1 + 2) return id;
-=======
->>>>>>> origin/main
   let best = null, bestArea = Infinity;
   for (const [id, [x0, y0, x1, y1]] of Object.entries(STATION_BOXES)) {
     if (x < x0 || x > x1 || y < y0 || y > y1) continue;
