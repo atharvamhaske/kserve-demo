@@ -161,21 +161,30 @@ const DIAGRAM_SLIDES = [
 function slide7() {
   const c = ctxFor(7); chrome(c);
   c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
-  text(c, 104, 128, 1000, 'Thank you', 'take', 'text-align:left;font-size:104px;line-height:1.25');
-  underline(c, 116, 470, 286);
-  text(c, 112, 306, 1100, "Let's connect after the talk.", 'kicker', 'font-size:28px;font-weight:500;letter-spacing:0;text-transform:none');
+  // Same type as the title slide: Poppins Medium for the heading, Regular for the rest.
+  text(c, 108, 112, 1000, 'Thank you', 'h1', 'font-size:100px;line-height:1.32');
+  underline(c, 116, 470, 264);
+  text(c, 112, 286, 1100, "Let's connect after the talk.", 'desc', 'font-size:30px;font-weight:500;color:' + VIO);
 
-  text(c, 112, 368, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:500');
+  text(c, 112, 340, 900, 'Atharva Mhaske', 'desc', 'font-size:44px;color:#4B4763');
   const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
                'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
   bio.forEach((t, i) => {
-    const y = 446 + i * 48;
-    circle(c, 124, y + 17, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
-    text(c, 146, y - 2, 1000, t, 'desc', 'font-size:26px');
+    const y = 412 + i * 44;
+    circle(c, 124, y + 18, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
+    text(c, 146, y, 1000, t, 'desc', 'font-size:25px');
   });
-  text(c, 112, 666, 1100, 'Ask me about LLM serving on Kubernetes, KServe or OpenTelemetry.', 'desc',
-       'font-size:25px;color:' + MUTED);
-  text(c, 112, 736, 900, 'github.com/atharvamhaske', 'lab', 'text-align:left;font-size:30px;font-weight:500;color:' + VIO);
+  text(c, 112, 604, 1100, 'Ask me about LLM serving on Kubernetes, KServe or OpenTelemetry.', 'desc',
+       'font-size:24px;color:' + MUTED);
+
+  // Scan to connect: LinkedIn and GitHub
+  [['qr-linkedin', 'LinkedIn', 'linkedin.com/in/atharavxdevs', 112],
+   ['qr-github', 'GitHub', 'github.com/atharvamhaske', 520]].forEach(([qr, name, url, x]) => {
+    put(c, c.rc.rectangle(x, 660, 200, 200, opts({ fill: PAPER, fillStyle: 'solid', strokeWidth: 2.5 })));
+    img(c, `assets/brand/${qr}.svg`, x + 16, 676, 168, 168);
+    text(c, x, 874, 380, name, 'desc', 'font-size:24px;font-weight:500');
+    text(c, x, 906, 400, url, 'desc', 'font-size:19px;color:' + MUTED);
+  });
 
   // the speaker, cut out from the selfie, on a soft violet disc
   circle(c, 1590, 610, 680, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });

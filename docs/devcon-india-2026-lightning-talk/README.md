@@ -23,7 +23,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 | 4 | 1:50-2:50 | The same path with each failure marked on its hop | |
 | 5 | 2:50-3:55 | The provider-kserve flow. You create an Instance. provider-kserve reconciles it into an LLMInferenceService or InferenceService. The KServe controllers create Deployments, HPAs, Services and Routes. provider-kserve writes the status and endpoint back to the Instance. | Declare intent. Get an endpoint back. |
 | 6 | 3:55-4:40 | KServe, KubeAI and a hand-rolled stack on the same four hops | Map the path, not the brand. |
-| 7 | 4:40-5:00 | Thank you and an invitation to connect, with the speaker bio, GitHub handle and photo | |
+| 7 | 4:40-5:00 | Thank you and an invitation to connect, with the speaker bio, QR codes for LinkedIn and GitHub, and the speaker photo | |
 
 ## Style
 
