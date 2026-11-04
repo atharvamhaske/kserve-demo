@@ -222,7 +222,7 @@ Create each username once. Do not create `chat-app` through both UI and manifest
 
 No-key requests, rotated old keys, and deleted-user keys return `401`.
 
-For a current key, confirm that Base URL ends in `/v1`. Confirm that the model matches the UI and the key belongs to this Instance. Retrieve the current value through Show credentials. Do not print it.
+Run `./scripts/workshop.sh inference NAMESPACE INSTANCE USERNAME`. It loads the current credentials Secret without printing the key. With the pinned plugin, generated keys start with `oe_sk_` and have 49 characters. A nonempty value with another length is not a valid generated key.
 
 ### Why does the API return `429`?
 
