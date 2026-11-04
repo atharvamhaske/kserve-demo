@@ -175,19 +175,17 @@ def request_path(s: Scene, broken=False):
 
 
 def whoami():
-    """Slide 2, the speaker intro, laid out like the speaker's own Excalidraw mock."""
+    """Slide 2, the speaker intro, after the speaker's own Excalidraw mock.
+
+    Only the drawing lives in the scene (logo, underline, bullet dots, photo frame).
+    The text is set in Poppins in slides.html, to match the title slide.
+    """
     s = Scene(2)
     s.image("brand/devcon-viii-logo.png", 44, 24, 154, 70)
-    s.text(1480, 36, 400, "Mumbai, India · 5 Nov 2026", 26, MUTED, "right")
-    s.text(82, 100, 600, "Who am I", 54)
-    s.text(78, 204, 1000, "Atharva Mhaske", 100)
-    s.line([(76, 332), (390, 337), (702, 326)], stroke=INK, sw=3, curved=True)
-    bio = ["AI and Infra Engineer at Cld9.ai", "Former Google Summer of Code 2026 Mentee",
-           "Member @OpenTelemetry project", "I love FOSS and contribute to multiple\nOSS projects under CNCF"]
-    for i, line in enumerate(bio):
+    s.line([(76, 316), (390, 321), (702, 310)], stroke=INK, sw=3, curved=True)
+    for i in range(4):
         y = 382 + i * 130
-        s.ellipse(91, y + 18, 22, 22, stroke=INK, fill=INK)
-        s.text(140, y, 1000, line, 42)
+        s.ellipse(91, y + 16, 22, 22, stroke=INK, fill=INK)
     # the photo in a double hand-drawn frame
     s.rect(1182, 182, 680, 766, stroke=MUTED, fill="transparent", sw=1.5)
     s.rect(1170, 170, 690, 770, stroke=TXT, fill=PAPER, sw=2.5)

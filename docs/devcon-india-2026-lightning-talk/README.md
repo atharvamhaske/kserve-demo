@@ -18,18 +18,18 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 | # | Time | Slide | Takeaway |
 |---|---|---|---|
 | 1 | 0:00-0:10 | Title, speaker photo, name and "Engineer at Cld9.ai" | |
-| 2 | 0:10-0:25 | Who am I: bio and photo, drawn as an Excalidraw scene after the speaker's mock | |
+| 2 | 0:10-0:25 | Who am I: bio in Poppins, and the photo in a hand-drawn Excalidraw frame, after the speaker's mock | |
 | 3 | 0:25-0:55 | The problem from the talk abstract. Where did this request go? Your app calls `/v1/chat/completions`, the cluster hides DNS, gateway, proxy, autoscaler and Pod, and a 404, a hang, a 504 or a 429 comes back. | Teams debug the symptom because they never mapped the path. |
 | 4 | 0:55-1:50 | Client, DNS + Service, Gateway, Model proxy, scale from zero, then a vLLM (GPU) or Ollama (CPU) Pod streams tokens back | It's never one Pod. |
 | 5 | 1:50-2:50 | The same path with each failure marked on its hop | |
 | 6 | 2:50-3:55 | The provider-kserve flow. You create an Instance. provider-kserve reconciles it into an LLMInferenceService or InferenceService. The KServe controllers create Deployments, HPAs, Services and Routes. provider-kserve writes the status and endpoint back to the Instance. | Declare intent. Get an endpoint back. |
 | 7 | 3:55-4:40 | KServe, KubeAI and a hand-rolled stack on the same four hops | Map the path, not the brand. |
-| 8 | 4:40-5:00 | Thank you, with a LinkedIn QR code, on the official Devcon 8 India artwork of the Gateway of India | |
+| 8 | 4:40-5:00 | Thank you and a LinkedIn QR code on the left, and the official Devcon 8 India artwork of the Gateway of India in a frame on the right | |
 
 ## Style
 
 - The background is the DevCon lavender gradient, from `#F4F2FF` to `#E9E6FB`. The only accent colour is violet `#7C3AED`, with `#5B21B6` and `#C4B5FD` as darker and lighter shades. Text is `#1E1B2E`.
-- All slide text outside the diagrams uses Poppins, the font of the official DevCon session banner. Medium weight is for titles and Regular for body text. The diagrams and takeaways use Excalifont.
+- All slide text outside the diagrams uses Poppins, the font of the official DevCon session banner. Medium weight is for titles and Regular for body text. The diagrams and takeaways on slides 3 to 7 use Excalifont.
 - Slides 2 to 7 are real Excalidraw scenes. They follow the [excalidraw-diagram-generator](https://github.com/github/awesome-copilot/tree/main/skills/excalidraw-diagram-generator) skill, so every text element uses Excalifont and every arrow is bound to the shapes it connects. They also follow the [hand-drawn-diagrams](https://github.com/nexu-io/open-design/tree/main/skills/hand-drawn-diagrams) rules of one idea per diagram and labels of 1 to 5 words. `scripts/diagrams.py` writes the scenes and `scripts/render_diagrams.js` renders them to SVG with Excalidraw's own `exportToSvg`, so the slides match excalidraw.com exactly. Every scene passes the hand-drawn-diagrams `validate_excalidraw.py` with 0 errors.
 - The slide text follows the `unslop` skill. It uses straight quotes, has no em dashes and puts sentence case on every heading.
 - The title slide has the DevCon VIII logo top-left and `MUMBAI, INDIA · 5 NOV 2026` top-right. The other slides leave that space to the content. Every slide has the FOSSASIA, OTS and OpenEverest logos bottom-left.
