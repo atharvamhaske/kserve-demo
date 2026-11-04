@@ -92,7 +92,7 @@ def main() -> None:
         print("wrote", BRAND / name)
 
     # Speaker photo: the circular crop from the title slide, used on slide 1.
-    cx, cy, r = 172, 860, 54
+    cx, cy, r = 172, 860, 50   # just inside the white ring around the photo
     face = title.crop((cx - r, cy - r, cx + r, cy + r)).resize((432, 432), Image.LANCZOS)
     mask = Image.new("L", face.size, 0)
     ImageDraw.Draw(mask).ellipse((0, 0, 431, 431), fill=255)

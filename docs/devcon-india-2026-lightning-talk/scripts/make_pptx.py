@@ -56,7 +56,7 @@ NOTES = [
     "Only the component names change. Map the path, not the brand.",
 
     "4:40-5:00 · Thank you\n"
-    "Thank you. Scan the QR codes to find me on LinkedIn or GitHub, and find me after the talk "
+    "Thank you. Scan the QR code to connect with me on LinkedIn, and find me after the talk "
     "if you want to talk about LLM serving on Kubernetes, KServe or OpenTelemetry.",
 ]
 
