@@ -1,7 +1,13 @@
 local_resource(
   'control-plane-health',
-  cmd='./scripts/70-status.sh',
   serve_cmd='./scripts/72-watch-status.sh',
+  readiness_probe=probe(
+    timeout_secs=15,
+    period_secs=30,
+    success_threshold=1,
+    failure_threshold=1,
+    exec=exec_action(command=['./scripts/70-status.sh']),
+  ),
   deps=['scripts/70-status.sh', 'scripts/72-watch-status.sh', 'scripts/lib.sh', 'config/workshop.env'],
   labels=['workshop'],
 )
@@ -21,7 +27,6 @@ local_resource(
   cmd='./scripts/55-deploy-headlamp.sh',
   deps=[
     'scripts/55-deploy-headlamp.sh',
-    'headlamp-plugin/src',
     'headlamp-plugin/dist/main.js',
     'headlamp-plugin/package.json',
     'manifests/headlamp-readonly-rbac.yaml',
