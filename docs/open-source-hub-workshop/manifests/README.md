@@ -10,6 +10,7 @@ Use these manifests for platform setup or an automated rehearsal. The live model
 | `demo-valkey.yaml` | Stores demo quota counters without persistence. | The install script applies it. |
 | `selfsigned-clusterissuer.yaml` | Issues the local Minikube Gateway certificate. | The local HTTPS script applies it. |
 | `application-env.example.yaml` | Shows how an application maps generated Secret values to environment variables. | Explain it after creating a user key. |
+| `headlamp-readonly-rbac.yaml` | Grants Headlamp read-only access to the LLM control-plane resources. | The Headlamp script applies it. |
 
 ## Preset YAML versus Instance YAML
 
