@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>LLM Request to Kubernetes</title>
+<!--
+  DevCon India VIII / FOSSASIA OTS 2026 lightning talk.
+  Each <section> is one 1920x1080 slide. Diagrams are drawn with rough.js,
+  the sketch engine behind Excalidraw, following the hand-drawn-diagrams
+  skill grammar: rectangles for components, ellipses for actors, bound
+  arrows, 1-5 word labels. Every shape is also recorded as an Excalidraw
+  element so build.js can write editable .excalidraw sources.
+-->
+<style>
+  @font-face { font-family: Poppins; font-weight: 400; src: url(assets/fonts/Poppins-Regular.ttf); }
+  @font-face { font-family: Poppins; font-weight: 500; src: url(assets/fonts/Poppins-Medium.ttf); }
+  @font-face { font-family: Poppins; font-weight: 600; src: url(assets/fonts/Poppins-SemiBold.ttf); }
+  @font-face { font-family: Poppins; font-weight: 700; src: url(assets/fonts/Poppins-Bold.ttf); }
+
+  :root {
+    --bg-a: #F4F2FF; --bg-b: #E9E6FB;
+    --violet: #7C3AED; --deep: #5B21B6; --soft: #C4B5FD;
+    --ink: #1E1B2E; --muted: #5E5A75;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #D9D4F3; }
+  body { font-family: Poppins, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+
+  .slide {
+    position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: linear-gradient(135deg, var(--bg-a) 0%, var(--bg-b) 100%);
+    break-after: page; page-break-after: always;
+  }
+  /* Soft halftone texture, strongest in the bottom-right corner. */
+  .slide .halftone {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(124, 58, 237, .13) 1.7px, transparent 2.1px);
+    background-size: 24px 24px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 80% at 100% 100%, #000 0%, transparent 70%);
+            mask-image: radial-gradient(ellipse 70% 80% at 100% 100%, #000 0%, transparent 70%);
+  }
+  .slide svg.ink { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: visible; }
+  .abs { position: absolute; }
+  img.abs { object-fit: contain; }
+
+  /* Chrome shared by every content slide */
+  .devcon   { left: 100px; top: 82px; width: 292px; height: 132px; }
+  .place    { right: 110px; top: 104px; text-align: right; font-weight: 600; font-size: 30px;
+              letter-spacing: .02em; color: var(--violet); line-height: 1.2; }
+  .place small { display: block; font-weight: 400; font-size: 21px; letter-spacing: 0; color: var(--muted); margin-top: 6px; }
+  .foss     { left: 106px; top: 974px; width: 220px; height: 56px; }
+  .divider  { left: 352px; top: 982px; width: 2px; height: 40px; background: var(--soft); }
+  .oe       { left: 376px; top: 972px; height: 60px; width: 172px; }
+  .pageno   { right: 110px; top: 986px; font-size: 22px; font-weight: 500; color: var(--muted); }
+  .pageno b { color: var(--violet); font-weight: 600; }
+
+  .kicker   { left: 112px; top: 236px; font-size: 26px; font-weight: 600; color: var(--violet); }
+  .h1       { left: 110px; top: 272px; width: 1700px; font-size: 60px; font-weight: 700; line-height: 1.15; letter-spacing: -.01em; }
+  .h1 em    { font-style: normal; color: var(--violet); }
+  .lede     { left: 112px; top: 352px; width: 1500px; font-size: 30px; font-weight: 400; color: var(--muted); line-height: 1.35; }
+
+  .lab      { font-size: 26px; font-weight: 600; line-height: 1.25; text-align: center; }
+  .sub      { font-size: 21px; font-weight: 400; line-height: 1.3; text-align: center; color: var(--muted); }
+  .num      { font-size: 26px; font-weight: 700; color: #fff; text-align: center; line-height: 1; }
+  .take     { font-weight: 700; color: var(--deep); text-align: center; letter-spacing: -.01em; }
+  .chip     { font-size: 20px; font-weight: 500; text-align: center; color: var(--deep); line-height: 1; }
+  .code     { font-size: 36px; font-weight: 700; color: var(--violet); line-height: 1; }
+  .desc     { font-size: 23px; font-weight: 500; color: var(--ink); line-height: 1.25; }
+  .cell     { font-size: 24px; font-weight: 500; line-height: 1.3; text-align: center; color: var(--ink);
+              display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+
+<!-- 1. Title: the official title slide, as is -->
+<section class="slide" data-slide="1">
+  <img class="abs" src="assets/brand/title-slide-light.png" alt="Title slide" style="left:0;top:0;width:1920px;height:1080px">
+</section>
+
+<section class="slide" data-slide="2"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="3"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="4"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="5"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="6"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="7"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+
+<script src="vendor/rough-4.6.6.js"></script>
+<script>
+const INK = '#5B21B6', VIO = '#7C3AED', SOFT = '#C4B5FD', TXT = '#1E1B2E', MUTED = '#5E5A75', PAPER = '#FFFFFF';
+const TOTAL = 7;
+const params = new URLSearchParams(location.search);
+
+/* ---------- tiny drawing kit (rough.js + Excalidraw records) ---------- */
+let SEED = 7;
+window.__excalidraw = {};
+
+function ctxFor(n) {
+  const el = document.querySelector(`section[data-slide="${n}"]`);
+  const svg = el.querySelector('svg.ink');
+  const ex = (window.__excalidraw[n] = []);
+  return { n, el, svg, rc: rough.svg(svg), ex, id: 0 };
+}
+const opts = (o = {}) => Object.assign({ stroke: INK, strokeWidth: 3, roughness: 1.1, bowing: 1.1, seed: SEED++ }, o);
+
+function exRec(c, type, x, y, w, h, o = {}, extra = {}) {
+  const id = `s${c.n}-${type}-${++c.id}`;
+  c.ex.push(Object.assign({
+    id, type, x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h), angle: 0,
+    strokeColor: o.stroke || INK, backgroundColor: o.fill && !o.fill.startsWith('rgba') ? o.fill : 'transparent',
+    fillStyle: o.fillStyle || 'solid', strokeWidth: Math.min(4, Math.round(o.strokeWidth || 2)),
+    strokeStyle: o.strokeLineDash ? 'dashed' : 'solid', roughness: 1, opacity: 100, groupIds: [], frameId: null,
+    roundness: type === 'rectangle' ? { type: 3 } : null, seed: o.seed || 1, version: 1, versionNonce: (o.seed || 1) * 7919,
+    isDeleted: false, boundElements: null, updated: 1, link: null, locked: false,
+  }, extra));
+  return id;
+}
+const put = (c, node) => (c.svg.appendChild(node), node);
+
+function rbox(c, x, y, w, h, o = {}) {
+  const r = o.r ?? 18;
+  const d = `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h}` +
+            ` H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
+  const oo = opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o));
+  put(c, c.rc.path(d, oo));
+  return exRec(c, 'rectangle', x, y, w, h, oo);
+}
+function ellipse(c, cx, cy, w, h, o = {}) {
+  const oo = opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o));
+  put(c, c.rc.ellipse(cx, cy, w, h, oo));
+  return exRec(c, 'ellipse', cx - w / 2, cy - h / 2, w, h, oo);
+}
+function circle(c, cx, cy, d, o = {}) { return ellipse(c, cx, cy, d, d, o); }
+function poly(c, pts, o = {}) {
+  const oo = opts(o);
+  put(c, c.rc.polygon(pts, oo));
+  recLine(c, 'line', pts.concat([pts[0]]), oo);
+}
+function line(c, pts, o = {}) {
+  const oo = opts(o);
+  put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo));
+  recLine(c, 'line', pts, oo);
+}
+function recLine(c, type, pts, oo, extra = {}) {
+  const [x0, y0] = pts[0];
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  return exRec(c, type, x0, y0, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), oo,
+    Object.assign({ points: pts.map(([x, y]) => [Math.round(x - x0), Math.round(y - y0)]) }, extra));
+}
+/** Arrow through pts; head at the last point. */
+function arrow(c, pts, o = {}) {
+  const oo = opts(Object.assign({ strokeWidth: 3 }, o));
+  put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo));
+  const [px, py] = pts[pts.length - 2], [tx, ty] = pts[pts.length - 1];
+  const a = Math.atan2(ty - py, tx - px), L = o.head ?? 18;
+  const hd = opts({ stroke: oo.stroke, strokeWidth: oo.strokeWidth, roughness: 0.6 });
+  put(c, c.rc.linearPath([[tx - L * Math.cos(a - 0.5), ty - L * Math.sin(a - 0.5)], [tx, ty],
+                          [tx - L * Math.cos(a + 0.5), ty - L * Math.sin(a + 0.5)]], hd));
+  return recLine(c, 'arrow', pts, oo, { startArrowhead: null, endArrowhead: 'arrow',
+    startBinding: o.from ? { elementId: o.from, focus: 0, gap: 8 } : null,
+    endBinding: o.to ? { elementId: o.to, focus: 0, gap: 8 } : null });
+}
+function text(c, x, y, w, html, cls, style = '', o = {}) {
+  const d = document.createElement('div');
+  d.className = 'abs ' + cls;
+  d.style.cssText = `left:${x}px;top:${y}px;width:${w}px;` + style;
+  d.innerHTML = html;
+  c.el.appendChild(d);
+  if (o.ex !== false) {
+    const plain = d.innerText.trim();
+    const fs = parseFloat(getComputedStyle(d).fontSize);
+    exRec(c, 'text', x, y, w, d.offsetHeight || fs * 1.3, { stroke: getComputedStyle(d).color.startsWith('rgb(255') ? '#ffffff' : TXT },
+      { text: plain, originalText: plain, fontSize: fs, fontFamily: 2, textAlign: d.style.textAlign || (getComputedStyle(d).textAlign === 'center' ? 'center' : 'left'),
+        verticalAlign: 'top', containerId: null, autoResize: true, lineHeight: 1.25 });
+  }
+  return d;
+}
+function img(c, src, x, y, w, h, style = '') {
+  const i = document.createElement('img');
+  i.className = 'abs'; i.src = src; i.alt = '';
+  i.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px;` + style;
+  c.el.appendChild(i);
+  return i;
+}
+function badge(c, cx, cy, n) {
+  circle(c, cx, cy, 52, { fill: VIO, stroke: INK, strokeWidth: 2.5 });
+  text(c, cx - 26, cy - 13, 52, String(n), 'num');
+}
+function underline(c, x1, x2, y) {
+  line(c, [[x1, y], [(x1 + x2) / 2, y + 6], [x2, y - 2]], { curve: true, stroke: VIO, strokeWidth: 5, roughness: 1.4 });
+}
+function zap(c, cx, cy, s = 1, o = {}) {
+  const P = [[2, -30], [-14, 4], [0, 4], [-4, 30], [14, -6], [0, -6]].map(([x, y]) => [cx + x * s, cy + y * s]);
+  poly(c, P, Object.assign({ fill: VIO, fillStyle: 'solid', stroke: INK, strokeWidth: 2 }, o));
+}
+
+function chrome(c) {
+  const el = c.el;
+  el.insertAdjacentHTML('afterbegin', '<div class="halftone"></div>');
+  el.insertAdjacentHTML('beforeend', `
+    <img class="abs devcon" src="assets/brand/devcon-viii-logo.png" alt="DevCon VIII India">
+    <div class="abs place">MUMBAI, INDIA · 5 NOV 2026<small>OTS Main Stage · 16:05 IST</small></div>
+    <img class="abs foss" src="assets/brand/fossasia-ots-logos.png" alt="FOSSASIA and OTS">
+    <div class="abs divider"></div>
+    <img class="abs oe" src="assets/logos/oe-logo-horizontal-full-color-white.svg" alt="OpenEverest">
+    <div class="abs pageno"><b>${c.n}</b> / ${TOTAL}</div>`);
+}
+function heading(c, kicker, h1) {
+  text(c, 112, 236, 1200, kicker, 'kicker');
+  text(c, 110, 272, 1700, h1, 'h1');
+}
+
+/* ---------- reusable doodles ---------- */
+function laptop(c, cx, cy, s = 1) {
+  rbox(c, cx - 50 * s, cy - 40 * s, 100 * s, 64 * s, { r: 6, strokeWidth: 3 });
+  poly(c, [[cx - 66 * s, cy + 28 * s], [cx + 66 * s, cy + 28 * s], [cx + 76 * s, cy + 40 * s], [cx - 76 * s, cy + 40 * s]],
+       { fill: SOFT, fillStyle: 'hachure', hachureGap: 5, strokeWidth: 2.5 });
+  text(c, cx - 50 * s, cy - 30 * s, 100 * s, '&gt;_', 'lab', `font-size:${30 * s}px;color:${VIO};font-weight:700`);
+}
+function fork(c, cx, cy, k = 1) {
+  const P = (x, y) => [cx + x * k, cy + y * k];
+  line(c, [P(-52, 0), P(-8, 0)], { strokeWidth: 3 });
+  arrow(c, [P(-8, 0), P(18, -16), P(48, -30)], { curve: true, head: 14 * Math.max(k, .8) });
+  arrow(c, [P(-8, 0), P(18, 16), P(48, 30)], { curve: true, head: 14 * Math.max(k, .8) });
+  arrow(c, [P(-8, 0), P(48, 0)], { head: 14 * Math.max(k, .8), stroke: SOFT });
+  circle(c, cx - 8 * k, cy, 16 * Math.max(k, .8), { fill: VIO, stroke: INK, strokeWidth: 2 });
+}
+function reconcile(c, cx, cy, r = 36) {
+  const oo = opts({ strokeWidth: 3.5 });
+  put(c, c.rc.arc(cx, cy, r * 2, r * 2, Math.PI * 0.15, Math.PI * 1.85, false, oo));
+  const a = Math.PI * 1.85, tx = cx + r * Math.cos(a), ty = cy + r * Math.sin(a);
+  const t = a + Math.PI / 2, L = 16;
+  put(c, c.rc.linearPath([[tx - L * Math.cos(t - .6), ty - L * Math.sin(t - .6)], [tx, ty], [tx - L * Math.cos(t + .6), ty - L * Math.sin(t + .6)]], opts({ strokeWidth: 3.5, roughness: .6 })));
+  exRec(c, 'ellipse', cx - r, cy - r, 2 * r, 2 * r, oo);
+}
+
+/* ---------- the request path, shared by slides 3 and 4 ---------- */
+const PX = [135, 480, 825, 1170, 1515], PY = 500, PW = 270, PH = 190, MID = PY + 95, LANE = 735;
+const PC = PX.map(x => x + PW / 2);   // 270, 615, 960, 1305, 1650
+
+function requestPath(c, broken = false) {
+  const hot = i => broken && (i === 2 || i === 3);
+  const ids = PX.map((x, i) => rbox(c, x, PY, PW, PH, hot(i) ? { stroke: VIO, strokeWidth: 5 } : {}));
+  PX.forEach((x, i) => badge(c, x + 8, PY + 8, i + 1));
+
+  laptop(c, PC[0], PY + 62, 1);
+  img(c, 'assets/k8s/svc.svg', PC[1] - 42, PY + 18, 84, 84);
+  img(c, 'assets/k8s/ing.svg', PC[2] - 42, PY + 18, 84, 84);
+  fork(c, PC[3] - 4, PY + 60);
+  // Model Pod: vLLM on GPU, Ollama on CPU, plus the Pod icon on the corner
+  img(c, 'assets/logos/vllm.png', PX[4] + 22, PY + 34, 118, 34);
+  text(c, PX[4] + 22, PY + 76, 118, 'GPU', 'chip', 'font-weight:600');
+  img(c, 'assets/logos/ollama.png', PX[4] + 178, PY + 20, 40, 56);
+  text(c, PX[4] + 150, PY + 76, 96, 'CPU', 'chip', 'font-weight:600');
+  img(c, 'assets/k8s/pod.svg', PX[4] + PW - 36, PY - 26, 60, 60);
+
+  const L = [['Client', 'your app or SDK'], ['DNS + Service', 'name to IP'], ['Gateway', 'Ingress, TLS, auth'],
+             ['Model proxy', 'routes by model name'], ['Model Pod', 'streams tokens']];
+  L.forEach(([a, b], i) => {
+    text(c, PX[i] + 10, PY + 110, PW - 20, a, 'lab');
+    text(c, PX[i] + 10, PY + 146, PW - 20, b, 'sub');
+  });
+
+  for (let i = 0; i < 4; i++) {
+    const x1 = PX[i] + PW + 8, x2 = PX[i + 1] - 8;
+    if (broken && i === 3) {
+      // the cold start: the hop exists, but nobody is home yet
+      line(c, [[x1, MID], [x1 + 18, MID], [x1 + 26, MID - 12], [x1 + 36, MID + 12], [x1 + 44, MID - 12], [x1 + 50, MID]], { stroke: VIO, strokeWidth: 4 });
+      arrow(c, [[x1 + 50, MID], [x2, MID]], { stroke: VIO, strokeWidth: 4, from: ids[i], to: ids[i + 1] });
+    } else {
+      arrow(c, [[x1, MID], [x2, MID]], { from: ids[i], to: ids[i + 1] });
+    }
+  }
+  return ids;
+}
+
+/* ---------- slides ---------- */
+function slide2() {
+  const c = ctxFor(2); chrome(c);
+  heading(c, 'The problem', 'You called <em>/v1/chat/completions</em>. Then what?');
+  text(c, 112, 352, 1500, 'Platform teams can’t see the path, so LLM calls fail in ways nobody can explain.', 'lede');
+
+  // your app
+  laptop(c, 290, 690, 1.7);
+  text(c, 150, 790, 280, 'Your app', 'lab');
+  text(c, 150, 826, 280, 'POST /v1/chat/completions', 'sub', 'font-size:20px');
+
+  // the cluster: a box you cannot see into
+  const k = rbox(c, 560, 470, 700, 440, { r: 28, strokeLineDash: [14, 12], fill: 'rgba(255,255,255,0.55)', strokeWidth: 3.5 });
+  img(c, 'assets/logos/k8s.svg', 588, 494, 64, 64);
+  text(c, 664, 506, 400, 'Kubernetes', 'lab', 'text-align:left;font-size:30px');
+  arrow(c, [[440, 690], [500, 680], [552, 690]], { curve: true, to: k, strokeWidth: 3.5 });
+
+  // the unknown path inside: a tangle
+  line(c, [[562, 700], [640, 690], [700, 620], [770, 640], [760, 760], [690, 780], [700, 700], [820, 650], [900, 760],
+           [980, 800], [1010, 700], [950, 640], [1030, 600], [1110, 690], [1080, 800], [1170, 740], [1258, 700]],
+       { curve: true, stroke: VIO, strokeWidth: 3.5, roughness: 1.6 });
+  ['pod', 'svc', 'ing', 'deploy', 'hpa', 'pod'].forEach((n, i) => {
+    const pos = [[600, 790], [840, 540], [1150, 560], [880, 830], [1170, 820], [1000, 520]][i];
+    img(c, `assets/k8s/${n}.svg`, pos[0], pos[1], 62, 62, 'opacity:.32');
+  });
+  text(c, 780, 548, 80, '?', 'take', 'font-size:84px;color:' + VIO);
+  text(c, 1070, 610, 80, '?', 'take', 'font-size:64px;color:' + SOFT);
+  text(c, 920, 640, 80, '?', 'take', 'font-size:110px;color:' + INK);
+
+  // what you get back
+  const S = [['404', 'not found'], ['Hang', 'no reply at all'], ['504', 'gateway timeout'], ['429', 'too many requests']];
+  S.forEach(([code, d], i) => {
+    const y = 470 + i * 114;
+    const id = rbox(c, 1390, y, 420, 92, { stroke: VIO, strokeWidth: 3.5 });
+    text(c, 1414, y + 28, 130, code, 'code');
+    text(c, 1550, y + 31, 250, d, 'desc', 'font-size:25px');
+    arrow(c, [[1266, 690], [1320, 690 + (y + 46 - 690) * 0.6], [1382, y + 46]], { curve: true, to: id, stroke: VIO, strokeWidth: 2.5, head: 14 });
+  });
+}
+
+function slide3() {
+  const c = ctxFor(3); chrome(c);
+  heading(c, 'The path', 'Follow one request, hop by hop');
+  requestPath(c);
+
+  // scale from zero, between the proxy and the Pod
+  const gx = (PX[3] + PW + PX[4]) / 2;
+  img(c, 'assets/k8s/hpa.svg', gx - 30, 392, 60, 60);
+  text(c, gx - 120, 452, 240, 'scale from 0', 'chip', 'font-size:22px;font-weight:600');
+  line(c, [[gx, 482], [gx, MID - 10]], { stroke: VIO, strokeWidth: 2.5, strokeLineDash: [8, 8] });
+
+  // tokens stream back
+  arrow(c, [[PC[4], PY + PH + 6], [PC[4], LANE], [PC[0], LANE], [PC[0], PY + PH + 6]], { stroke: VIO, strokeLineDash: [14, 10], strokeWidth: 3 });
+  const toks = ['data:', 'Kuber', 'netes', ' is', ' a', ' container', '…'];
+  let x = 470;
+  toks.forEach(t => {
+    const w = 26 + t.length * 12.5;
+    rbox(c, x, LANE - 19, w, 38, { r: 12, stroke: VIO, strokeWidth: 2 });
+    text(c, x, LANE - 9, w, t.trim() || '·', 'chip');
+    x += w + 26;
+  });
+  text(c, 1260, LANE + 12, 380, 'tokens stream back (SSE)', 'sub', 'text-align:left;color:' + INK + ';font-weight:500');
+
+  text(c, 360, 806, 1200, 'It’s never one Pod.', 'take', 'font-size:68px');
+  underline(c, 660, 1262, 896);
+}
+
+function slide4() {
+  const c = ctxFor(4); chrome(c);
+  heading(c, 'Where it breaks', 'Each hop fails in its own way');
+  const ids = requestPath(c, true);
+  zap(c, PX[2] + PW - 6, PY + 6, 0.9);
+  zap(c, PX[3] + PW - 6, PY + 6, 0.9);
+
+  // the return stream, cut at the gateway
+  line(c, [[PC[4], PY + PH + 6], [PC[4], LANE], [PC[2] + 34, LANE]], { stroke: VIO, strokeLineDash: [14, 10] });
+  arrow(c, [[PC[2] - 34, LANE], [PC[0], LANE], [PC[0], PY + PH + 6]], { stroke: VIO, strokeLineDash: [14, 10] });
+  zap(c, PC[2], LANE, 0.75);
+
+  function callout(x, y, code, desc, to, leader) {
+    const id = rbox(c, x, y, 320, 96, { stroke: VIO, strokeWidth: 3.5 });
+    text(c, x + 22, y + 14, 280, code, 'code');
+    text(c, x + 22, y + 56, 290, desc, 'desc');
+    arrow(c, leader, { stroke: VIO, strokeWidth: 2.5, head: 13, from: id, to });
+  }
+  const gx = (PX[3] + PW + PX[4]) / 2;
+  callout(800, 374, '404', 'wrong API path', ids[2], [[960, 472], [960, PY - 4]]);
+  callout(gx - 160, 374, 'Hang', 'cold model wakes up', ids[4], [[gx, 472], [gx, MID - 18]]);
+  callout(800, 790, '504', 'timeout kills the stream', ids[2], [[960, 788], [960, LANE + 34]]);
+  callout(1145, 790, '429', 'ignores token cost', ids[3], [[1305, 788], [1305, PY + PH + 6]]);
+
+  text(c, 135, 800, 620, 'Every one of these looks like<br><span style="color:#5B21B6;font-weight:700">“the model is broken.”</span>', 'desc',
+       'font-size:32px;line-height:1.35');
+}
+
+function slide5() {
+  const c = ctxFor(5); chrome(c);
+  heading(c, 'How OpenEverest solved it', 'One object in, a working endpoint out');
+  const Y = 470, H = 200, M = Y + H / 2;
+
+  const you = ellipse(c, 222, M, 206, 160, { strokeWidth: 3 });
+  text(c, 122, M - 34, 200, 'You', 'lab', 'font-size:30px;font-weight:700');
+  text(c, 122, M + 6, 200, 'UI · API · kubectl', 'sub', 'font-size:20px');
+
+  const B = [[372, 262], [704, 262], [1036, 300], [1406, 404]];
+  const ids = B.map(([x, w]) => rbox(c, x, Y, w, H));
+  B.forEach(([x], i) => badge(c, x + 8, Y + 8, i + 1));
+
+  // 1 Instance
+  img(c, 'assets/logos/oe-icon-full-color-dark.svg', 503 - 40, Y + 18, 80, 80);
+  text(c, 378, Y + 108, 250, 'Instance', 'lab');
+  text(c, 378, Y + 144, 250, 'core.openeverest.io', 'sub', 'color:' + INK + ';font-weight:500');
+  // 2 provider-kserve
+  reconcile(c, 835, Y + 60, 36);
+  img(c, 'assets/logos/oe-icon-full-color-dark.svg', 835 - 20, Y + 40, 40, 40);
+  text(c, 704, Y + 108, 262, 'provider-kserve', 'lab');
+  text(c, 704, Y + 144, 262, 'turns intent into KServe', 'sub');
+  // 3 LLMInferenceService
+  img(c, 'assets/logos/kserve-logo.png', 1186 - 38, Y + 16, 76, 76);
+  text(c, 1041, Y + 98, 290, 'LLMInferenceService', 'lab', 'font-size:24px');
+  text(c, 1041, Y + 132, 290, 'or InferenceService', 'sub', 'font-size:20px');
+  text(c, 1041, Y + 160, 290, 'serving.kserve.io', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
+  // 4 KServe controllers -> Kubernetes objects
+  text(c, 1416, Y + 18, 384, 'KServe controllers', 'lab');
+  [['deploy', 'Deployment', 0, 0], ['svc', 'Service', 0, 1], ['hpa', 'HPA', 1, 0], ['ing', 'Route', 1, 1]].forEach(([ic, lb, col, row]) => {
+    const x = 1406 + (col ? 236 : 24), y = Y + 64 + row * 64;
+    img(c, `assets/k8s/${ic}.svg`, x, y, 54, 54);
+    text(c, x + 60, y + 13, 140, lb, 'sub', 'text-align:left;font-weight:500;color:' + INK);
+  });
+
+  arrow(c, [[328, M], [372, M]], { from: you, to: ids[0] });
+  for (let i = 0; i < 3; i++) arrow(c, [[B[i][0] + B[i][1] + 8, M], [B[i + 1][0] - 8, M]], { from: ids[i], to: ids[i + 1] });
+
+  // status and endpoint flow back to the Instance
+  const lane = 732;
+  arrow(c, [[1608, Y + H + 6], [1608, lane], [503, lane], [503, Y + H + 6]], { stroke: VIO, strokeLineDash: [14, 10], from: ids[3], to: ids[0] });
+  rbox(c, 840, lane - 22, 470, 44, { r: 22, stroke: VIO, strokeWidth: 2.5 });
+  text(c, 840, lane - 14, 470, 'status + endpoint written back', 'chip', 'font-size:22px;font-weight:600');
+  rbox(c, 372, 772, 540, 50, { r: 25, stroke: INK, strokeWidth: 2, fill: '#EDE9FE' });
+  line(c, [[394, 797], [404, 808], [424, 784]], { stroke: VIO, strokeWidth: 4, roughness: .6 });
+  text(c, 436, 783, 470, 'Ready · https://qwen-demo…/v1', 'chip', 'text-align:left;color:' + TXT + ';font-size:22px');
+
+  text(c, 260, 842, 1400, 'Declare intent. Get an endpoint back.', 'take', 'font-size:56px');
+  underline(c, 1060, 1492, 916);
+}
+
+function slide6() {
+  const c = ctxFor(6); chrome(c);
+  heading(c, 'Same hops, any stack', 'Different tools, the same four hops');
+  const top = 376, hh = 84, rh = 90, L = 112, R = 1810, COL = [480, 940, 1400];
+  const bottom = top + hh + rh * 4;
+  rbox(c, L, top, R - L, bottom - top, { r: 22, fill: 'rgba(255,255,255,0.7)', strokeWidth: 3 });
+  line(c, [[L + 6, top + hh], [R - 6, top + hh]], { strokeWidth: 3 });
+  for (let r = 1; r < 4; r++) line(c, [[L + 14, top + hh + r * rh], [R - 14, top + hh + r * rh]], { stroke: SOFT, strokeWidth: 2.5 });
+  COL.forEach(x => line(c, [[x, top + 10], [x, bottom - 10]], { stroke: SOFT, strokeWidth: 2.5 }));
+
+  // headers
+  const cx = [710, 1170, 1605];
+  img(c, 'assets/logos/kserve-logo.png', cx[0] - 92, top + 16, 52, 52);
+  text(c, cx[0] - 30, top + 22, 200, 'KServe', 'lab', 'text-align:left;font-size:30px;font-weight:700');
+  text(c, cx[1] - 150, top + 22, 300, 'KubeAI', 'lab', 'font-size:30px;font-weight:700');
+  img(c, 'assets/logos/k8s.svg', cx[2] - 120, top + 18, 48, 48);
+  text(c, cx[2] - 62, top + 22, 240, 'Hand-rolled', 'lab', 'text-align:left;font-size:30px;font-weight:700');
+
+  const rows = [
+    ['ing', 'Gateway', 'Envoy AI Gateway', 'Ingress to KubeAI', 'ingress-nginx'],
+    ['fork', 'Model routing', 'InferencePool + endpoint picker', 'proxy reads the <i>model</i> field', 'one path per model'],
+    ['hpa', 'Scale from zero', 'Knative or KEDA', 'built in, to zero', 'HPA, min 1 replica'],
+    ['pod', 'Model Pod', 'vLLM runtime', 'vLLM or Ollama', 'vLLM Deployment'],
+  ];
+  rows.forEach(([ic, hop, ...cells], r) => {
+    const y = top + hh + r * rh;
+    if (ic === 'fork') fork(c, L + 49, y + rh / 2, 0.62);
+    else img(c, `assets/k8s/${ic}.svg`, L + 22, y + 18, 54, 54);
+    text(c, L + 96, y + 27, 270, hop, 'lab', 'text-align:left');
+    cells.forEach((t, k) => {
+      const x0 = k === 0 ? COL[0] : COL[k], x1 = k === 2 ? R : COL[k + 1];
+      text(c, x0 + 14, y + 6, x1 - x0 - 28, `<span>${t}</span>`, 'cell', `height:${rh - 12}px`);
+    });
+  });
+
+  text(c, 360, 862, 1200, 'Map the path, not the brand.', 'take', 'font-size:56px');
+}
+
+function slide7() {
+  const c = ctxFor(7); chrome(c);
+  text(c, 108, 236, 900, 'Thank you', 'take', 'text-align:left;font-size:112px;color:' + TXT);
+  underline(c, 116, 470, 384);
+
+  img(c, 'assets/brand/speaker-photo.png', 116, 414, 112, 112);
+  circle(c, 172, 470, 124, { fill: 'none', fillStyle: 'solid', stroke: VIO, strokeWidth: 3 });
+  text(c, 260, 418, 800, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:44px;font-weight:700');
+  text(c, 260, 478, 760, 'Backend Engineer, Cloud9 · OpenEverest, provider-kserve', 'sub', 'text-align:left;font-size:23px');
+
+  rbox(c, 112, 588, 300, 300, { r: 20, strokeWidth: 3 });
+  img(c, 'assets/brand/speaker-qr.svg', 136, 612, 252, 252);
+  text(c, 446, 600, 560, 'Scan for my speaker page', 'lab', 'text-align:left;font-size:28px');
+  text(c, 446, 642, 560, 'eventyay.com/fossasia/ots2026/<br>speakers/ZNTNQ3', 'sub', 'text-align:left;font-size:22px');
+  text(c, 446, 740, 600, 'github.com/atharvamhaske', 'lab', 'text-align:left;font-size:30px;color:' + INK);
+  text(c, 446, 790, 600, 'Try it: github.com/openeverest/provider-kserve', 'sub', 'text-align:left;font-size:22px');
+
+  if (params.get('art') === '1') {
+    img(c, 'assets/brand/devcon-8-india-bg.png', 1000, 290, 840, 640, 'object-position:right bottom');
+  } else {
+    gatewayOfIndia(c, 1050, 860, 1);
+  }
+}
+
+/* Gateway of India, Mumbai: a hand-drawn front elevation in violet ink. */
+function gatewayOfIndia(c, x0, ground, s) {
+  const X = v => x0 + v * s, Y = v => ground - v * s;
+  const wall = { fill: SOFT, fillStyle: 'hachure', hachureGap: 11, hachureAngle: 41, fillWeight: 1.6, strokeWidth: 3 };
+  const open = { fill: '#F4F2FF', fillStyle: 'solid', strokeWidth: 2.5 };
+  const archPath = (l, r, spring, apex, base) => {
+    const m = (l + r) / 2, w = r - l;
+    return `M${X(l)},${Y(base)} L${X(l)},${Y(spring)} C${X(l)},${Y(spring + (apex - spring) * .55)} ${X(m - w * .18)},${Y(apex - 6)} ${X(m)},${Y(apex)}` +
+           ` C${X(m + w * .18)},${Y(apex - 6)} ${X(r)},${Y(spring + (apex - spring) * .55)} ${X(r)},${Y(spring)} L${X(r)},${Y(base)} Z`;
+  };
+  const P = (d, o) => put(c, c.rc.path(d, opts(o)));
+  const R = (l, b, r, t, o) => P(`M${X(l)},${Y(b)} H${X(r)} V${Y(t)} H${X(l)} Z`, o);
+
+  // plinth and steps
+  R(-30, 0, 790, 22, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 3 });
+  line(c, [[X(-10), Y(11)], [X(770), Y(11)]], { stroke: SOFT, strokeWidth: 2 });
+  // side wings
+  R(0, 22, 200, 250, wall); R(560, 22, 760, 250, wall);
+  // central block
+  R(200, 22, 560, 390, wall);
+  // parapet bands and jali ticks
+  R(200, 390, 560, 420, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
+  for (let v = 214; v < 556; v += 18) line(c, [[X(v), Y(394)], [X(v), Y(416)]], { stroke: INK, strokeWidth: 1.6, roughness: .5 });
+  R(0, 250, 200, 270, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
+  R(560, 250, 760, 270, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
+  // central arch, side arches, upper windows
+  P(archPath(282, 478, 230, 330, 22), open);
+  P(archPath(306, 454, 220, 300, 22), { fill: 'none', strokeWidth: 1.8, stroke: VIO });
+  P(archPath(60, 140, 140, 196, 22), open); P(archPath(620, 700, 140, 196, 22), open);
+  P(archPath(232, 262, 290, 320, 250), open); P(archPath(498, 528, 290, 320, 250), open);
+  // four turrets on the central block, two on the wings
+  const turret = (l, w, base, h) => {
+    R(l, base, l + w, base + h, { fill: '#EDE9FE', fillStyle: 'solid', strokeWidth: 2.5 });
+    P(`M${X(l - 4)},${Y(base + h)} Q${X(l + w / 2)},${Y(base + h + w * 1.15)} ${X(l + w + 4)},${Y(base + h)} Z`, { fill: SOFT, fillStyle: 'solid', strokeWidth: 2.5 });
+    line(c, [[X(l + w / 2), Y(base + h + w * .58)], [X(l + w / 2), Y(base + h + w * .58 + 18)]], { strokeWidth: 2.5, roughness: .4 });
+  };
+  turret(196, 44, 420, 70); turret(520, 44, 420, 70); turret(300, 34, 420, 44); turret(426, 34, 420, 44);
+  turret(-6, 36, 270, 40); turret(730, 36, 270, 40);
+  // central crest
+  P(`M${X(350)},${Y(420)} Q${X(380)},${Y(500)} ${X(410)},${Y(420)} Z`, { fill: VIO, fillStyle: 'hachure', hachureGap: 6, strokeWidth: 2.5 });
+  // the sea in front, and two gulls
+  [[-70, -26], [-30, -50]].forEach(([dx, dy], k) => {
+    const pts = []; for (let v = -60 + dx; v <= 840; v += 50) pts.push([X(v), Y(dy + (pts.length % 2 ? 7 : -7))]);
+    line(c, pts, { curve: true, stroke: k ? SOFT : VIO, strokeWidth: 2.5, roughness: .9 });
+  });
+  [[80, 520], [150, 560]].forEach(([bx, by]) =>
+    line(c, [[X(bx - 22), Y(by + 6)], [X(bx - 9), Y(by + 12)], [X(bx), Y(by)], [X(bx + 9), Y(by + 12)], [X(bx + 22), Y(by + 6)]], { curve: true, stroke: INK, strokeWidth: 2.5 }));
+  exRec(c, 'rectangle', X(-30), Y(500), 820 * s, 500 * s, opts({ strokeWidth: 2 }));
+  text(c, X(140), Y(-70), 480, 'Gateway of India, Mumbai', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
+}
+
+Promise.all([400, 500, 600, 700].map(w => document.fonts.load(w + ' 24px Poppins'))).then(() => {
+  [slide2, slide3, slide4, slide5, slide6, slide7].forEach(f => f());
+  const imgs = [...document.images];
+  return Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
+}).then(() => { window.__ready = true; });
+</script>
+</body>
+</html>
