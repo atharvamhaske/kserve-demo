@@ -3,7 +3,7 @@
 # shellcheck disable=SC1091
 source "$(dirname -- "$0")/lib.sh"
 
-require_commands df docker free getent git go helm jq kubectl minikube nproc nvidia-smi openssl sudo uname
+require_commands df docker free getent git go helm jq kubectl minikube nproc nvidia-smi openssl sudo tilt uname
 
 kernel_release=$(uname -r)
 case "${kernel_release,,}" in
@@ -25,6 +25,7 @@ docker run --rm --gpus all ubuntu:24.04 nvidia-smi
 minikube version --short
 kubectl version --client=true
 helm version --short
+tilt version
 go version
 
 printf 'Preflight passed.\n'

@@ -13,7 +13,7 @@ source /etc/os-release
 [[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || fail 'bootstrap requires Ubuntu 24.04 LTS'
 require_commands apt-get
 
-for variable_name in KUBECTL_VERSION MINIKUBE_VERSION HELM_VERSION GO_VERSION; do
+for variable_name in KUBECTL_VERSION MINIKUBE_VERSION HELM_VERSION GO_VERSION TILT_VERSION; do
   [[ -n ${!variable_name:-} ]] || fail "missing $variable_name in $CONFIG_FILE"
 done
 
@@ -185,6 +185,39 @@ install_helm() {
   sudo install -o root -g root -m 0755 "$temporary_dir/linux-amd64/helm" /usr/local/bin/helm
 }
 
+install_tilt() {
+  local current archive expected checksum filename release_version
+  if command -v tilt >/dev/null 2>&1; then
+    validate_managed_command tilt
+    current=$(tilt version 2>/dev/null) || fail 'installed Tilt version probe failed'
+    current=${current%%,*}
+    [[ $current == "$TILT_VERSION" ]] ||
+      fail "Tilt $current is installed; remove it or use the pinned $TILT_VERSION"
+    return
+  fi
+
+  require_absent_destination /usr/local/bin/tilt
+  release_version=${TILT_VERSION#v}
+  archive="tilt.$release_version.linux.x86_64.tar.gz"
+  curl "${curl_options[@]}" \
+    --output "$temporary_dir/$archive" \
+    "https://github.com/tilt-dev/tilt/releases/download/$TILT_VERSION/$archive"
+  expected=
+  while read -r checksum filename; do
+    if [[ $filename == "$archive" ]]; then
+      expected=$checksum
+      break
+    fi
+  done < <(
+    curl "${curl_options[@]}" \
+      "https://github.com/tilt-dev/tilt/releases/download/$TILT_VERSION/checksums.txt"
+  )
+  [[ -n $expected ]] || fail "missing checksum for $archive"
+  printf '%s  %s\n' "$expected" "$temporary_dir/$archive" | sha256sum --check
+  tar -xzf "$temporary_dir/$archive" -C "$temporary_dir" tilt
+  sudo install -o root -g root -m 0755 "$temporary_dir/tilt" /usr/local/bin/tilt
+}
+
 install_go() {
   local current archive expected
 
@@ -234,6 +267,7 @@ install_go() {
 install_kubectl
 install_minikube
 install_helm
+install_tilt
 install_go
 hash -r
 

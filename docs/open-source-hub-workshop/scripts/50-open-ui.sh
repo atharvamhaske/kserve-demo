@@ -3,7 +3,7 @@
 # shellcheck disable=SC1091
 source "$(dirname -- "$0")/lib.sh"
 
-require_commands cat grep kubectl nohup sleep
+require_commands cat grep kubectl nohup ps sleep
 
 start_forward() {
   local name=$1
@@ -12,10 +12,17 @@ start_forward() {
   local ports=$4
   local pid_file=$STATE_DIR/$name.pid
   local log_file=$STATE_DIR/$name.log
+  local existing_pid existing_args expected_args
 
-  if [[ -f $pid_file ]] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
-    printf '%s port-forward already runs with PID %s.\n' "$name" "$(cat "$pid_file")"
-    return
+  if [[ -f $pid_file ]]; then
+    existing_pid=$(cat "$pid_file")
+    existing_args=$(ps -p "$existing_pid" -o args= 2>/dev/null || true)
+    expected_args="--context $PROFILE -n $namespace port-forward svc/$service $ports"
+    if [[ $existing_args == "kubectl $expected_args" || $existing_args == *"/kubectl $expected_args" ]]; then
+      printf '%s port-forward already runs with PID %s.\n' "$name" "$existing_pid"
+      return
+    fi
+    rm -f "$pid_file"
   fi
 
   nohup kubectl --context "$PROFILE" -n "$namespace" \
@@ -34,9 +41,14 @@ start_forward() {
   done
 }
 
-
 start_forward everest "$EVEREST_NS" everest 8080:8080
 start_forward grafana "$MONITORING_NS" observability-grafana 3000:80
+if kube -n headlamp get service/headlamp >/dev/null 2>&1; then
+  start_forward headlamp headlamp headlamp 4466:80
+fi
 
 printf 'OpenEverest: http://localhost:8080\n'
 printf 'Grafana: http://localhost:3000\n'
+if kube -n headlamp get service/headlamp >/dev/null 2>&1; then
+  printf 'Headlamp: http://localhost:4466\n'
+fi

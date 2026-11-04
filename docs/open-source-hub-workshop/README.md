@@ -188,28 +188,31 @@ Keep the Minikube LoadBalancer tunnel open.
 
 ### Terminal 1 again
 
-Create a local `nip.io` HTTPS endpoint, verify the platform, and open both UIs.
+Create local HTTPS, verify the platform, deploy Headlamp, and open the UIs.
 
 ```bash
 ./scripts/workshop.sh https-local
 ./scripts/workshop.sh verify
+./scripts/workshop.sh headlamp
 ./scripts/workshop.sh ui
 ```
 
 ### Connect from the GPU host terminal
 
-`./scripts/workshop.sh ui` starts two background `kubectl port-forward` processes on the GPU host:
+`./scripts/workshop.sh ui` starts three background `kubectl port-forward` processes on the GPU host:
 
 | UI | GPU-host listener | Kubernetes Service |
 |---|---|---|
 | OpenEverest | `127.0.0.1:8080` | `everest-system/everest:8080` |
 | Grafana | `127.0.0.1:3000` | `monitoring-demo/observability-grafana:80` |
+| Headlamp | `127.0.0.1:4466` | `headlamp/headlamp:80` |
 
-Confirm both listeners from the GPU host:
+Confirm the listeners from the GPU host:
 
 ```bash
 curl --head --silent --show-error http://localhost:8080/
 curl --head --silent --show-error http://localhost:3000/
+curl --head --silent --show-error http://localhost:4466/
 ```
 
 The launcher stores process IDs and logs here:
@@ -218,21 +221,23 @@ The launcher stores process IDs and logs here:
 STATE_DIR=${XDG_STATE_HOME:-$HOME/.local/state}/openeverest-kserve-workshop
 printf 'OpenEverest PID: '; cat "$STATE_DIR/everest.pid"
 printf 'Grafana PID: '; cat "$STATE_DIR/grafana.pid"
+printf 'Headlamp PID: '; cat "$STATE_DIR/headlamp.pid"
 cat "$STATE_DIR/everest.log"
 cat "$STATE_DIR/grafana.log"
+cat "$STATE_DIR/headlamp.log"
 ```
 
 On a GPU host with a desktop, open Brave on that host:
 
 - OpenEverest: `http://localhost:8080`.
 - Grafana: `http://localhost:3000`.
+- Headlamp: `http://localhost:4466`.
 
-Use the OpenEverest admin password entered during `prepare` or `fresh`.
+Use the OpenEverest admin password entered during `prepare` or `fresh`. Headlamp uses a read-only in-cluster service account.
 
 ### Connect from a remote presenter machine
 
-Do not expose ports 8080 or 3000 through a public firewall. Carry both loopback listeners through SSH.
-
+Do not expose ports 8080, 3000, 4466, or 10350 through a public firewall. Carry the loopback listeners through SSH.
 First confirm SSH access:
 
 ```bash
@@ -248,6 +253,8 @@ ssh -N \
   -o ServerAliveInterval=30 \
   -L 127.0.0.1:8080:127.0.0.1:8080 \
   -L 127.0.0.1:3000:127.0.0.1:3000 \
+  -L 127.0.0.1:4466:127.0.0.1:4466 \
+  -L 127.0.0.1:10350:127.0.0.1:10350 \
   "$GPU_HOST"
 ```
 
@@ -255,24 +262,38 @@ Open Brave on the presenter machine:
 
 - OpenEverest: `http://localhost:8080`.
 - Grafana: `http://localhost:3000`.
+- Headlamp: `http://localhost:4466`.
+- Tilt: `http://localhost:10350`.
 
-If either presenter port is already in use, choose different local ports:
+If any presenter port is already in use, choose different local ports:
 
 ```bash
 ssh -N \
   -o ExitOnForwardFailure=yes \
   -L 127.0.0.1:18080:127.0.0.1:8080 \
   -L 127.0.0.1:13000:127.0.0.1:3000 \
+  -L 127.0.0.1:14466:127.0.0.1:4466 \
+  -L 127.0.0.1:10351:127.0.0.1:10350 \
   "$GPU_HOST"
 ```
 
-Then open `http://localhost:18080` and `http://localhost:13000`.
+Then open ports 18080, 13000, 14466, and 10351 on `localhost`.
 
 Ctrl-C closes the SSH connection and presenter access. The GPU-host port-forward processes continue until cleanup or manual termination.
 
+### Track failures with Tilt
+
+Run the dashboard on the GPU host:
+
+```bash
+./scripts/workshop.sh dashboard
+```
+
+Tilt checks control-plane health every 30 seconds. Run the inference and Headlamp lessons manually to avoid quota use or cluster changes.
+
 ### UI traffic versus model API traffic
 
-The SSH forwards carry only OpenEverest and Grafana browser traffic. They do not carry the model's `nip.io` HTTPS endpoint.
+The SSH forwards carry only browser traffic. They do not carry the model's `nip.io` HTTPS endpoint.
 
 Keep `./scripts/workshop.sh tunnel` running for the Gateway address. Run curl and Go clients on the GPU host when that address is private.
 
@@ -285,7 +306,7 @@ Use one entry point for every operator action:
 | Command | Result |
 |---|---|
 | `./scripts/workshop.sh bootstrap` | Installs pinned workshop CLI tools and runs the preflight. |
-| `./scripts/workshop.sh preflight` | Verifies native Linux, Docker, NVIDIA GPU, Minikube, Helm, kubectl, and Go. |
+| `./scripts/workshop.sh preflight` | Verifies native Linux, Docker, NVIDIA GPU, Minikube, Helm, Tilt, kubectl, and Go. |
 | `./scripts/workshop.sh cluster` | Creates Kubernetes 1.36.6 and runs a CUDA vector-add Pod. |
 | `./scripts/workshop.sh install` | Installs Gateway API, cert-manager, OpenEverest, monitoring, Valkey, provider-kserve, and the plugin. |
 | `./scripts/workshop.sh prepare` | Runs preflight, cluster, and install in order. |
@@ -295,7 +316,9 @@ Use one entry point for every operator action:
 | `./scripts/workshop.sh https-public` | Creates trusted Let's Encrypt HTTPS for a public Gateway. |
 | `./scripts/workshop.sh verify` | Checks releases, CRDs, presets, Gateway address, certificate, and the 401 auth gate. |
 | `./scripts/workshop.sh inference NAMESPACE INSTANCE USERNAME` | Verifies authenticated curl, Go, and per-key metrics without printing the API key. |
-| `./scripts/workshop.sh ui` | Starts OpenEverest and Grafana port-forwards. |
+| `./scripts/workshop.sh headlamp` | Deploys the bundled Headlamp LLM control plane. |
+| `./scripts/workshop.sh dashboard` | Starts Tilt with health, inference, and Headlamp lessons. |
+| `./scripts/workshop.sh ui` | Starts OpenEverest, Grafana, and Headlamp port-forwards. |
 | `CONFIRM_DELETE=all ./scripts/workshop.sh cleanup` | Deletes the workshop and restores the kernel setting. |
 
 The optional bootstrap installs host CLI tools. The numbered stage scripts contain the cluster and platform commands. Helm values and Kubernetes manifests remain separate, reviewable files.
@@ -311,6 +334,7 @@ The optional bootstrap installs host CLI tools. The numbered stage scripts conta
 | Manifest | `demo-valkey` | Demo-only quota counters without persistence. |
 | Helm | `provider-kserve` | Provider, KServe, Envoy Gateway, Envoy AI Gateway, Gateway, and dashboards. |
 | Helm | `plugin-user-management` | Users tab, plugin API, `InstanceUser` CRD, controller, and credentials Secrets. |
+| Helm | `headlamp` | Optional LLM control plane for providers, models, users, Gateway health, and warning events. |
 | Manifest | `kserve-qwen-demo-gateway` | Workshop preset for Qwen3 0.6B, GPU, HTTPS Gateway, metrics, and quota. |
 | OpenEverest UI | `qwen-demo` | Model workload, route, system key, and connection details. |
 | OpenEverest UI | `chat-app`, `batch-job` | Separate credentials and Gateway key Secrets. |
@@ -375,11 +399,13 @@ The KServe endpoint picker is not Agent Router. It selects a healthy vLLM endpoi
 | Gateway API | `v1.6` |
 | Kubernetes | `v1.36.6` |
 | Minikube | `v1.39.0` |
+| Tilt | `v0.37.5` |
 | cert-manager | `v1.21.3` |
 | Valkey | `9.1.3-alpine` |
 | kube-prometheus-stack | `92.16.1` |
 | Prometheus | `v3.15.1` |
 | Grafana | `13.3.0` |
+| Headlamp | `0.46.0` |
 | OpenAI Go client | `v3.91.0` |
 
 Kubernetes 1.37 is outside the provider's declared range. Pin Kubernetes 1.36.6.

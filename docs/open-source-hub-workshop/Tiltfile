@@ -1,0 +1,38 @@
+local_resource(
+  'control-plane-health',
+  serve_cmd='./scripts/72-watch-status.sh',
+  readiness_probe=probe(
+    timeout_secs=15,
+    period_secs=30,
+    success_threshold=1,
+    failure_threshold=1,
+    exec=exec_action(command=['./scripts/70-status.sh']),
+  ),
+  deps=['scripts/70-status.sh', 'scripts/72-watch-status.sh', 'scripts/lib.sh', 'config/workshop.env'],
+  labels=['workshop'],
+)
+
+local_resource(
+  'inference-lesson',
+  cmd='./scripts/75-inference-lesson.sh',
+  deps=['scripts/75-inference-lesson.sh', 'scripts/60-test-inference.sh', 'clients/go'],
+  resource_deps=['control-plane-health'],
+  trigger_mode=TRIGGER_MODE_MANUAL,
+  auto_init=False,
+  labels=['workshop'],
+)
+
+local_resource(
+  'headlamp-control-plane',
+  cmd='./scripts/55-deploy-headlamp.sh',
+  deps=[
+    'scripts/55-deploy-headlamp.sh',
+    'headlamp-plugin/dist/main.js',
+    'headlamp-plugin/package.json',
+    'manifests/headlamp-readonly-rbac.yaml',
+    'values/headlamp.yaml',
+  ],
+  trigger_mode=TRIGGER_MODE_MANUAL,
+  auto_init=False,
+  labels=['workshop'],
+)

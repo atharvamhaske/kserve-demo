@@ -5,7 +5,7 @@ source "$(dirname -- "$0")/lib.sh"
 
 [[ ${CONFIRM_DELETE:-} == all ]] || fail 'set CONFIRM_DELETE=all to remove the workshop cluster'
 
-for name in everest grafana; do
+for name in everest grafana headlamp; do
   pid_file=$STATE_DIR/$name.pid
   if [[ -f $pid_file ]]; then
     kill "$(cat "$pid_file")" 2>/dev/null || true

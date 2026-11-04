@@ -20,11 +20,13 @@ Use this set for the current workshop:
 | kubectl | `v1.36.6` | `kubectl` Linux `amd64` binary | Matching the Kubernetes server patch removes avoidable client skew. |
 | Minikube | `v1.39.0` | `minikube-linux-amd64` | This is the latest stable Minikube release. It supports Kubernetes 1.36 and 1.37, but its default is 1.37. The workshop passes the Kubernetes pin explicitly. |
 | Helm | `v3.22.1` | `helm-v3.22.1-linux-amd64.tar.gz` | This is the pinned Helm 3 client used for the workshop charts. |
+| Tilt | `v0.37.5` | `tilt.0.37.5.linux.x86_64.tar.gz` | The Tilt dashboard runs the workshop health and lesson resources. |
 | Go | `1.26.10` | `go1.26.10.linux-amd64.tar.gz` | This supported Go 1.26 patch satisfies the client module and OpenAI Go requirements. |
 | cert-manager | `v1.21.3` | `jetstack/cert-manager` | This is the latest stable release. Install it separately before provider-kserve so the admission webhook is ready. |
 | kube-prometheus-stack | `92.16.1` | `prometheus-community/kube-prometheus-stack`, asset `kube-prometheus-stack-92.16.1.tgz` | This is the latest chart release. Its Kubernetes constraint is `>=1.25.0-0`, which includes 1.36.6. |
 | Prometheus | `v3.15.1` | `quay.io/prometheus/prometheus:v3.15.1-distroless` | This is the image pinned by kube-prometheus-stack 92.16.1 and the latest stable Prometheus release. Do not replace it with the `v3.16.0-rc.2` preview. |
 | Grafana | `13.3.0` | Grafana dependency chart `14.2.0`, image `docker.io/grafana/grafana:13.3.0-distroless` | kube-prometheus-stack 92.16.1 pins Grafana chart 14.2.0, whose `appVersion` is 13.3.0. This matches the latest stable Grafana release. |
+| Headlamp | `0.46.0` | Helm chart `headlamp/headlamp` | The optional control plane loads the checked-in OpenEverest LLM plugin. |
 | Valkey | `9.1.3` | `valkey/valkey:9.1.3-alpine` | This is the latest stable Valkey release. The workshop uses one disposable instance for token-quota counters. |
 | OpenAI Go client | `v3.91.0` | `github.com/openai/openai-go/v3` | This is the latest non-prerelease client. It requires Go 1.26 or newer. |
 
@@ -49,6 +51,7 @@ Use these official procedures:
 - kubectl `v1.36.6`: [binary and checksum procedure](https://v1-36.docs.kubernetes.io/docs/tasks/tools/install-kubectl-linux/).
 - Minikube `v1.39.0`: [release and assets](https://github.com/kubernetes/minikube/releases/tag/v1.39.0).
 - Helm `v3.22.1`: [release and checksums](https://github.com/helm/helm/releases/tag/v3.22.1).
+- Tilt `v0.37.5`: [release and checksums](https://github.com/tilt-dev/tilt/releases/tag/v0.37.5).
 - Go `1.26.10`: [download metadata](https://go.dev/dl/?mode=json) and [installation procedure](https://go.dev/doc/install).
 
 For each missing client, the script downloads the artifact into a temporary directory and verifies its published SHA-256 value before privileged installation. It leaves a matching managed version unchanged and rejects another installation.
@@ -239,6 +242,8 @@ Do not treat data parallel size and Kubernetes replicas as synonyms. Data parall
 - Kubernetes 1.34 end of life: [patch releases](https://kubernetes.io/releases/patch-releases/#1-34).
 - Minikube `v1.39.0`: [release](https://github.com/kubernetes/minikube/releases/tag/v1.39.0).
 - Minikube tested range and default: [constants](https://github.com/kubernetes/minikube/blob/v1.39.0/pkg/minikube/constants/constants.go).
+- Tilt `v0.37.5`: [release](https://github.com/tilt-dev/tilt/releases/tag/v0.37.5).
+- Headlamp `0.46.0`: [release](https://github.com/kubernetes-sigs/headlamp/releases/tag/v0.46.0) and [Helm chart](https://github.com/kubernetes-sigs/headlamp/tree/v0.46.0/charts/headlamp).
 - cert-manager `v1.21.3`: [release](https://github.com/cert-manager/cert-manager/releases/tag/v1.21.3).
 - Minikube NVIDIA GPU procedure: [official guide](https://minikube.sigs.k8s.io/docs/tutorials/nvidia/).
 - kube-prometheus-stack `92.16.1`: [release](https://github.com/prometheus-community/helm-charts/releases/tag/kube-prometheus-stack-92.16.1).

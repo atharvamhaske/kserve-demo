@@ -1,0 +1,25 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: headlamp-openeverest-llm
+rules:
+  - apiGroups: [""]
+    resources: ["events", "namespaces", "nodes", "pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["core.openeverest.io"]
+    resources: ["instances", "providers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["plugin-user-management.plugins.openeverest.io"]
+    resources: ["instanceusers"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gateways", "httproutes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["aigateway.envoyproxy.io"]
+    resources: ["aigatewayroutes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["gateway.envoyproxy.io"]
+    resources: ["securitypolicies"]
+    verbs: ["get", "list", "watch"]
+  - nonResourceURLs: ["/healthz", "/version"]
+    verbs: ["get"]

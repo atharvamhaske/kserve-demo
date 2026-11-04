@@ -1,0 +1,14 @@
+config:
+  pluginsDir: /headlamp/plugins
+  unsafeUseServiceAccountToken: true
+clusterRoleBinding:
+  create: true
+  clusterRoleName: headlamp-openeverest-llm
+volumeMounts:
+  - name: llm-control-plane-plugin
+    mountPath: /headlamp/plugins/headlamp-openeverest-llm
+    readOnly: true
+volumes:
+  - name: llm-control-plane-plugin
+    secret:
+      secretName: headlamp-openeverest-llm
