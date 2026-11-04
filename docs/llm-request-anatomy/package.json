@@ -1,0 +1,17 @@
+{
+  "name": "llm-request-anatomy",
+  "private": true,
+  "type": "module",
+  "description": "Animated isometric figures of one LLM request crossing the OpenEverest + KServe platform",
+  "scripts": {
+    "build": "node v1-pneumatic-post/build.mjs && node v1-pneumatic-post/build.mjs --light && node v2-rack/build.mjs && node v2-rack/build.mjs --light && node v3-plan/build.mjs && node v3-plan/build.mjs --light && node scripts/gallery.mjs",
+    "record": "node scripts/record.mjs export/v1-pneumatic-post.html --out export && node scripts/record.mjs export/v2-rack.html --out export && node scripts/record.mjs export/v3-plan.html --out export && node scripts/gallery.mjs",
+    "check": "node scripts/lines.mjs export/v1-pneumatic-post.html && node scripts/lines.mjs export/v2-rack.html && node scripts/lines.mjs export/v3-plan.html",
+    "artifact": "node scripts/artifact.mjs export/v1-pneumatic-post.html export/artifact/v1-pneumatic-post.html && node scripts/artifact.mjs export/v2-rack.html export/artifact/v2-rack.html && node scripts/artifact.mjs export/v3-plan.html export/artifact/v3-plan.html",
+    "serve": "node scripts/serve.mjs",
+    "start": "npm run build && npm run serve"
+  },
+  "engines": {
+    "node": ">=20.10"
+  }
+}
