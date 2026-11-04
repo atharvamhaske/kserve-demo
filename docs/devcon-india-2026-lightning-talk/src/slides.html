@@ -72,11 +72,12 @@
 <section class="slide" data-slide="5"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
 <section class="slide" data-slide="6"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
 <section class="slide" data-slide="7"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
+<section class="slide" data-slide="8"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
 
 <script src="vendor/rough-4.6.6.js"></script>
 <script>
 const INK = '#5B21B6', VIO = '#7C3AED', SOFT = '#C4B5FD', TXT = '#1E1B2E', MUTED = '#5E5A75', PAPER = '#FFFFFF';
-const TOTAL = 7;
+const TOTAL = 8;
 
 /* ---------- small drawing kit for the sketches on slides 1 and 7 ---------- */
 let SEED = 7;
@@ -126,7 +127,7 @@ function heading(c, kicker, h1) {
 // Each scene is laid out in slide coordinates. FIT gives the vertical centre of its
 // content and how far to move it, so it sits centred between the heading and the
 // footer, slightly enlarged now that the top of the slide is free.
-const FIT = { 2: [732, -126], 3: [648, -68], 4: [643, -63], 5: [688, -108], 6: [655, -75] }, ZOOM = 1.06;
+const FIT = { 3: [732, -126], 4: [648, -68], 5: [643, -63], 6: [688, -108], 7: [655, -75] }, ZOOM = 1.06;
 function diagramSlide(n, kicker, h1, lede) {
   const c = ctxFor(n); chrome(c);
   heading(c, kicker, h1);
@@ -150,51 +151,46 @@ function slide1() {
 }
 
 const DIAGRAM_SLIDES = [
-  [2, 'The problem', 'Where did this request go?',
+  [3, 'The problem', 'Where did this request go?',
    'Platform teams ship LLM features fast. In production, one chat completion is rarely one Pod.'],
-  [3, 'The path', 'Follow one request, hop by hop'],
-  [4, 'Where it breaks', 'Each hop fails in its own way'],
-  [5, 'How OpenEverest solved it', 'provider-kserve turns an Instance into an endpoint'],
-  [6, 'Same hops, any stack', 'Three stacks, the same four hops'],
+  [4, 'The path', 'Follow one request, hop by hop'],
+  [5, 'Where it breaks', 'Each hop fails in its own way'],
+  [6, 'How OpenEverest solved it', 'provider-kserve turns an Instance into an endpoint'],
+  [7, 'Same hops, any stack', 'Three stacks, the same four hops'],
 ];
 
-function slide7() {
-  const c = ctxFor(7); chrome(c);
-  c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
-  // Same type as the title slide: Poppins Medium for the heading, Regular for the rest.
-  text(c, 108, 112, 1000, 'Thank you', 'h1', 'font-size:100px;line-height:1.32');
-  underline(c, 116, 470, 264);
-  text(c, 112, 286, 1100, "Let's connect after the talk.", 'desc', 'font-size:30px;font-weight:500;color:' + VIO);
+/** Slide 2: who am I. The whole slide is an Excalidraw scene, after the speaker's mock. */
+function slide2() {
+  const c = ctxFor(2); chrome(c);
+  img(c, 'diagrams/slide-02.svg', 0, 0, 1920, 1080);
+}
 
-  text(c, 112, 340, 900, 'Atharva Mhaske', 'desc', 'font-size:44px;color:#4B4763');
-  const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
-               'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
-  bio.forEach((t, i) => {
-    const y = 412 + i * 44;
-    circle(c, 124, y + 18, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
-    text(c, 146, y, 1000, t, 'desc', 'font-size:25px');
+/** Slide 8: thank you, on the official Devcon 8 India artwork (Gateway of India). */
+function slide8() {
+  const c = ctxFor(8);
+  const art = img(c, 'assets/brand/devcon-8-india-bg.jpg', 0, 0, 1920, 1080, 'object-fit:cover');
+  c.el.insertBefore(art, c.svg);   // the artwork sits behind the hand-drawn card
+  put(c, c.rc.path('M96,96 H648 Q672,96 672,120 V960 Q672,984 648,984 H96 Q72,984 72,960 V120 Q72,96 96,96 Z',
+    opts({ fill: 'rgba(255,255,255,0.93)', fillStyle: 'solid', stroke: INK, strokeWidth: 3 })));
+  text(c, 110, 122, 560, 'Thank you', 'h1', 'font-size:92px;line-height:1.32');
+  underline(c, 118, 440, 252);
+  text(c, 112, 274, 560, "Let's connect after the talk.", 'desc', 'font-size:27px;font-weight:500;color:' + VIO);
+  [['qr-linkedin', 'LinkedIn', 'linkedin.com/in/<br>atharavxdevs', 340],
+   ['qr-github', 'GitHub', 'github.com/<br>atharvamhaske', 610]].forEach(([qr, name, url, y]) => {
+    put(c, c.rc.rectangle(112, y, 230, 230, opts({ fill: PAPER, fillStyle: 'solid', strokeWidth: 2.5 })));
+    img(c, `assets/brand/${qr}.svg`, 129, y + 17, 196, 196);
+    text(c, 370, y + 72, 290, name, 'desc', 'font-size:30px;font-weight:500');
+    text(c, 370, y + 118, 290, url, 'desc', 'font-size:21px;line-height:1.4;color:' + MUTED);
   });
-  text(c, 112, 604, 1100, 'Ask me about LLM serving on Kubernetes, KServe or OpenTelemetry.', 'desc',
-       'font-size:24px;color:' + MUTED);
-
-  // Scan to connect: LinkedIn and GitHub
-  [['qr-linkedin', 'LinkedIn', 'linkedin.com/in/atharavxdevs', 112],
-   ['qr-github', 'GitHub', 'github.com/atharvamhaske', 520]].forEach(([qr, name, url, x]) => {
-    put(c, c.rc.rectangle(x, 660, 200, 200, opts({ fill: PAPER, fillStyle: 'solid', strokeWidth: 2.5 })));
-    img(c, `assets/brand/${qr}.svg`, x + 16, 676, 168, 168);
-    text(c, x, 874, 380, name, 'desc', 'font-size:24px;font-weight:500');
-    text(c, x, 906, 400, url, 'desc', 'font-size:19px;color:' + MUTED);
-  });
-
-  // the speaker, cut out from the selfie, on a soft violet disc
-  circle(c, 1590, 610, 680, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
-  img(c, 'assets/brand/speaker-cutout.png', 1282, 176, 602, 904, 'object-fit:cover;object-position:top');
+  text(c, 112, 892, 560, 'Atharva Mhaske', 'desc', 'font-size:30px;color:#4B4763');
+  text(c, 1500, 1044, 390, 'Artwork: Devcon 8 India', 'desc', 'font-size:16px;text-align:right;color:rgba(255,255,255,.85)');
 }
 
 Promise.all([400, 500, 600, 700].map(w => document.fonts.load(w + ' 24px Poppins'))).then(() => {
   slide1();
+  slide2();
   DIAGRAM_SLIDES.forEach(a => diagramSlide(...a));
-  slide7();
+  slide8();
   const imgs = [...document.images];
   return Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
 }).then(() => { window.__ready = true; });

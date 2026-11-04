@@ -1,4 +1,4 @@
-"""Write the deck's diagrams as Excalidraw scenes (slides 2 to 6).
+"""Write slides 2 to 7 as Excalidraw scenes: the speaker intro and the diagrams.
 
 The scenes follow the excalidraw-diagram-generator skill (github/awesome-copilot):
 Excalifont (fontFamily 5) for every text element, arrows bound to the shapes they
@@ -174,8 +174,29 @@ def request_path(s: Scene, broken=False):
     return boxes
 
 
-def slide2():
+def whoami():
+    """Slide 2, the speaker intro, laid out like the speaker's own Excalidraw mock."""
     s = Scene(2)
+    s.image("brand/devcon-viii-logo.png", 44, 24, 154, 70)
+    s.text(1480, 36, 400, "Mumbai, India · 5 Nov 2026", 26, MUTED, "right")
+    s.text(82, 100, 600, "Who am I", 54)
+    s.text(78, 204, 1000, "Atharva Mhaske", 100)
+    s.line([(76, 332), (390, 337), (702, 326)], stroke=INK, sw=3, curved=True)
+    bio = ["AI and Infra Engineer at Cld9.ai", "Former Google Summer of Code 2026 Mentee",
+           "Member @OpenTelemetry project", "I love FOSS and contribute to multiple\nOSS projects under CNCF"]
+    for i, line in enumerate(bio):
+        y = 382 + i * 130
+        s.ellipse(91, y + 18, 22, 22, stroke=INK, fill=INK)
+        s.text(140, y, 1000, line, 42)
+    # the photo in a double hand-drawn frame
+    s.rect(1182, 182, 680, 766, stroke=MUTED, fill="transparent", sw=1.5)
+    s.rect(1170, 170, 690, 770, stroke=TXT, fill=PAPER, sw=2.5)
+    s.image("brand/speaker-cutout.png", 1274, 186, 482, 745)
+    s.save()
+
+
+def problem():
+    s = Scene(3)
     app = s.rect(150, 560, 280, 220)
     s.image("k8s/user.svg", 250, 580, 80, 80)
     s.center(290, 676, "Your app", 28)
@@ -200,8 +221,8 @@ def slide2():
     s.save()
 
 
-def slide3():
-    s = Scene(3)
+def path():
+    s = Scene(4)
     boxes = request_path(s)
     s.image("k8s/hpa.svg", GX - 30, 380, 60, 60)
     s.center(GX, 440, "scale from zero", 20, VIO)
@@ -215,8 +236,8 @@ def slide3():
     s.save()
 
 
-def slide4():
-    s = Scene(4)
+def breaks():
+    s = Scene(5)
     boxes = request_path(s, broken=True)
     # the return stream, cut at the gateway
     s.line([(PC[4], PY + PH + 6), (PC[4], LANE), (PC[2] + 34, LANE)], stroke=VIO, dashed=True)
@@ -238,8 +259,8 @@ def slide4():
     s.save()
 
 
-def slide5():
-    s = Scene(5)
+def openeverest():
+    s = Scene(6)
     Y, H = 470, 200
     M = Y + H / 2
     you = s.ellipse(112, M - 75, 164, 150)
@@ -305,8 +326,8 @@ def slide5():
     s.save()
 
 
-def slide6():
-    s = Scene(6)
+def stacks():
+    s = Scene(7)
     top, hh, rh, L, R, COL = 376, 84, 90, 112, 1810, [480, 940, 1400]
     bottom = top + hh + rh * 4
     s.rect(L, top, R - L, bottom - top, fill=PAPER)
@@ -344,5 +365,5 @@ def slide6():
 
 
 if __name__ == "__main__":
-    for f in (slide2, slide3, slide4, slide5, slide6):
+    for f in (whoami, problem, path, breaks, openeverest, stacks):
         f()
