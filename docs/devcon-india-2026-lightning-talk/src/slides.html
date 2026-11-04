@@ -161,22 +161,25 @@ const DIAGRAM_SLIDES = [
 function slide7() {
   const c = ctxFor(7); chrome(c);
   c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
-  text(c, 108, 150, 900, 'Thank you', 'take', 'text-align:left;font-size:108px;color:' + TXT);
-  underline(c, 116, 402, 292);
+  text(c, 108, 140, 1000, 'Thank you', 'take', 'text-align:left;font-size:108px;color:' + TXT);
+  underline(c, 116, 402, 282);
+  text(c, 112, 306, 1100, "Let's connect after the talk.", 'kicker', 'font-size:28px;letter-spacing:0;text-transform:none');
 
-  text(c, 112, 336, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
+  text(c, 112, 372, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
   const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
                'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
   bio.forEach((t, i) => {
-    const y = 412 + i * 48;
+    const y = 446 + i * 48;
     circle(c, 124, y + 17, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
-    text(c, 146, y, 860, t, 'desc', 'font-size:27px;font-weight:400');
+    text(c, 146, y, 1000, t, 'desc', 'font-size:27px;font-weight:400');
   });
-  text(c, 112, 648, 800, 'github.com/atharvamhaske', 'lab', 'text-align:left;font: 600 30px "Geist Mono", monospace;color:' + INK);
+  text(c, 112, 666, 1100, 'Ask me about LLM serving on Kubernetes, KServe or OpenTelemetry.', 'desc',
+       'font-size:26px;font-weight:400;color:' + MUTED);
+  text(c, 112, 736, 900, 'github.com/atharvamhaske', 'lab', 'text-align:left;font: 600 30px "Geist Mono", monospace;color:' + INK);
 
-  // the speaker, cut out from the event photo, on a soft violet disc
-  circle(c, 1600, 600, 640, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
-  img(c, 'assets/brand/speaker-cutout.png', 1382, 150, 436, 930, 'object-fit:cover;object-position:top');
+  // the speaker, cut out from the selfie, on a soft violet disc
+  circle(c, 1590, 610, 680, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
+  img(c, 'assets/brand/speaker-cutout.png', 1282, 176, 602, 904, 'object-fit:cover;object-position:top');
 }
 
 Promise.all([400, 500, 600, 700].flatMap(w => [document.fonts.load(w + ' 24px Inter'), document.fonts.load(w + ' 24px "Geist Mono"')])).then(() => {

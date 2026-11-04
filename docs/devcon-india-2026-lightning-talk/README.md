@@ -23,7 +23,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 | 4 | 1:50-2:50 | The same path with each failure marked on its hop | |
 | 5 | 2:50-3:55 | The provider-kserve flow. You create an Instance. provider-kserve reconciles it into an LLMInferenceService or InferenceService. The KServe controllers create Deployments, HPAs, Services and Routes. provider-kserve writes the status and endpoint back to the Instance. | Declare intent. Get an endpoint back. |
 | 6 | 3:55-4:40 | KServe, KubeAI and a hand-rolled stack on the same four hops | Map the path, not the brand. |
-| 7 | 4:40-5:00 | Thank you, with the speaker bio, GitHub handle and photo | |
+| 7 | 4:40-5:00 | Thank you and an invitation to connect, with the speaker bio, GitHub handle and photo | |
 
 ## Style
 
@@ -35,7 +35,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 
 ## Assets
 
-- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork and the round speaker photo out of it, with transparent backgrounds. The folder also holds `speaker-cutout.png`, the event photo with its background removed by [rembg](https://github.com/danielgatis/rembg) using the `u2net_human_seg` model.
+- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork and the round speaker photo out of it, with transparent backgrounds. The folder also holds `speaker-cutout.png` for slide 7. It is the speaker's mirror selfie, flipped so the T-shirt text reads correctly, with the background removed by [rembg](https://github.com/danielgatis/rembg). The `u2net_human_seg` model finds the person and `isnet-general-use` keeps the phone.
 - `src/assets/k8s/` holds the official Kubernetes icons from [kubernetes/community](https://github.com/kubernetes/community/tree/master/icons).
 - `src/assets/logos/` holds the Kubernetes, KServe, vLLM, Ollama, FOSSASIA and OpenEverest logos. The OpenEverest logo comes from its brand kit.
 - `src/assets/fonts/` holds Inter and Geist Mono, both under the SIL Open Font License.

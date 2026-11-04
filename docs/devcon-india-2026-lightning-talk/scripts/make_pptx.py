@@ -54,6 +54,7 @@ NOTES = [
 
     "4:40-5:00 · Thank you\n"
     "I'm Atharva Mhaske, AI and Infra Engineer at Cld9.ai, a former GSoC 2026 mentee and an OpenTelemetry member. "
+    "Find me after the talk if you want to talk about LLM serving on Kubernetes, KServe or OpenTelemetry. "
     "I'm github.com/atharvamhaske. Thank you.",
 ]
 
