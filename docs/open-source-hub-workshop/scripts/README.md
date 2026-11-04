@@ -17,6 +17,7 @@ The numbered scripts implement each stage. Their numbers show the normal order, 
 | Expose | `./scripts/workshop.sh https-local` | Creates the local self-signed `nip.io` endpoint. |
 | Fresh install | `./scripts/workshop.sh fresh` | Runs bootstrap, cluster creation, and platform installation. |
 | Verify | `./scripts/workshop.sh verify` | Checks controllers, presets, HTTPS, and the authentication gate. |
+| Prove inference | `./scripts/workshop.sh inference NAMESPACE INSTANCE USERNAME` | Resolves the user's credentials Secret without printing the key, then verifies curl, Go, and Prometheus paths. |
 | Present | `./scripts/workshop.sh ui` | Starts OpenEverest and Grafana port-forwards. |
 | Remove | `CONFIRM_DELETE=all ./scripts/workshop.sh cleanup` | Deletes the workshop and restores the kernel setting. |
 

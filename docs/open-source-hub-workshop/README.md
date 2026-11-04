@@ -24,6 +24,13 @@ The live story stays in the OpenEverest UI. The checked-in scripts prepare and v
 
 Use the `kserve-qwen-demo-gateway` preset card for the live demo.
 
+Do not select the similarly named `kserve-qwen-gpu` provider preset.
+
+| UI preset | Model | External access | Workshop use |
+|---|---|---|---|
+| `kserve-qwen-demo-gateway` | Qwen3 0.6B | Envoy AI Gateway | Select this preset. It creates the route, authentication, quota, and metrics path for the workshop. |
+| `kserve-qwen-gpu` | Qwen3 4B | ClusterIP by default | Do not select it for this runbook. It does not create an AI Gateway route until external access changes. |
+
 Open Start from scratch only as an unsaved teaching view. Use `qwen-demo-terminal.yaml` only for an automated rehearsal.
 
 The rule for attendees is simple:
@@ -287,6 +294,7 @@ Use one entry point for every operator action:
 | `./scripts/workshop.sh https-local` | Creates self-signed HTTPS on a `nip.io` hostname. |
 | `./scripts/workshop.sh https-public` | Creates trusted Let's Encrypt HTTPS for a public Gateway. |
 | `./scripts/workshop.sh verify` | Checks releases, CRDs, presets, Gateway address, certificate, and the 401 auth gate. |
+| `./scripts/workshop.sh inference NAMESPACE INSTANCE USERNAME` | Verifies authenticated curl, Go, and per-key metrics without printing the API key. |
 | `./scripts/workshop.sh ui` | Starts OpenEverest and Grafana port-forwards. |
 | `CONFIRM_DELETE=all ./scripts/workshop.sh cleanup` | Deletes the workshop and restores the kernel setting. |
 
@@ -642,9 +650,39 @@ Repeat with Name `batch-job`.
 
 Wait until both rows show Ready.
 
-## 7. Load copied client values
+## 7. Load and verify client values
 
-For local HTTPS, load the generated Gateway state first:
+Use the authenticated verifier for the normal workshop path:
+
+```bash
+./scripts/workshop.sh inference default qwen-demo chat-app
+```
+
+For another model, pass its namespace, Instance name, and InstanceUser username:
+
+```bash
+./scripts/workshop.sh inference NAMESPACE INSTANCE USERNAME
+```
+
+The command resolves the exact `InstanceUser.status.credentialsSecret`. It does not print the API key. It verifies:
+
+- No key returns `401`.
+- The current user key returns `200` from `/models`.
+- A chat completion returns `200`.
+- The checked-in Go client returns a completion.
+- Prometheus receives per-key token metrics.
+
+This command is the preferred recording path. It shows the HTTPS Base URL, model, Secret name, key length, status codes, completion, SDK result, and metrics. It never prints the API-key value.
+
+Authenticated curl proof:
+
+![Authenticated curl request through Envoy AI Gateway](assets/gateway-curl-proof.png)
+
+Go SDK and metrics proof:
+
+![OpenAI Go SDK response and per-key metrics](assets/gateway-go-metrics-proof.png)
+
+For manual calls, load the generated Gateway state first:
 
 ```bash
 GATEWAY_STATE=${XDG_STATE_HOME:-$HOME/.local/state}/openeverest-kserve-workshop/gateway.env
@@ -657,17 +695,20 @@ if [ -n "${GATEWAY_CERT:-}" ]; then
 fi
 ```
 
-Load the UI values without printing the keys:
+Load only the values from the API-key dialog:
 
 ```bash
-read -rsp 'Paste chat-app API key: ' OPENAI_API_KEY
+read -rsp 'Paste chat-app API key only: ' OPENAI_API_KEY
 printf '\n'
 read -rp 'Paste Base URL: ' OPENAI_BASE_URL
 read -rp 'Paste Model: ' OPENAI_MODEL
-read -rsp 'Paste batch-job API key: ' BATCH_API_KEY
+read -rsp 'Paste batch-job API key only: ' BATCH_API_KEY
 printf '\n'
 export OPENAI_API_KEY OPENAI_BASE_URL OPENAI_MODEL BATCH_API_KEY
+printf 'chat-app key length: %s\n' "${#OPENAI_API_KEY}"
 ```
+
+With the pinned user-management plugin, a generated API key starts with `oe_sk_` and has 49 characters. A nonempty variable is not sufficient. Do not paste JSON, a shell assignment, a field label, or surrounding whitespace. If the value has another length, unset it and use Show credentials or the `inference` command.
 
 ## 8. Call the model with curl
 

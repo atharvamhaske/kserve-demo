@@ -28,6 +28,7 @@ case "$command_name" in
   https-local) exec "$script_dir/30-enable-local-https.sh" ;;
   https-public) exec "$script_dir/31-enable-public-https.sh" ;;
   verify) exec "$script_dir/40-verify.sh" ;;
+  inference) exec "$script_dir/60-test-inference.sh" "${@:2}" ;;
   ui) exec "$script_dir/50-open-ui.sh" ;;
   cleanup) exec "$script_dir/90-cleanup.sh" ;;
   help | --help | -h)
@@ -45,6 +46,7 @@ Commands:
   https-local   Create a self-signed nip.io HTTPS endpoint.
   https-public  Create a Let's Encrypt nip.io HTTPS endpoint.
   verify        Check releases, CRDs, presets, Gateway, and HTTPS auth.
+  inference      Verify authenticated curl, Go, and metrics paths for one InstanceUser.
   ui            Start OpenEverest and Grafana port-forwards.
   cleanup       Delete the workshop after CONFIRM_DELETE=all.
 EOF
