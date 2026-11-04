@@ -12,8 +12,11 @@
   few sketch strokes with rough.js, the library Excalidraw uses.
 -->
 <style>
-  @font-face { font-family: Inter; font-weight: 100 900; src: url(assets/fonts/Inter.ttf); }
-  @font-face { font-family: "Geist Mono"; font-weight: 100 900; src: url(assets/fonts/GeistMono.ttf); }
+  /* Poppins, the font of the official DevCon session banner. */
+  @font-face { font-family: Poppins; font-weight: 400; src: url(assets/fonts/Poppins-Regular.ttf); }
+  @font-face { font-family: Poppins; font-weight: 500; src: url(assets/fonts/Poppins-Medium.ttf); }
+  @font-face { font-family: Poppins; font-weight: 600; src: url(assets/fonts/Poppins-SemiBold.ttf); }
+  @font-face { font-family: Poppins; font-weight: 700; src: url(assets/fonts/Poppins-Bold.ttf); }
 
   :root {
     --bg-a: #F4F2FF; --bg-b: #E9E6FB;
@@ -23,7 +26,7 @@
   @page { size: 1920px 1080px; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { background: #D9D4F3; }
-  body { font-family: Inter, sans-serif; font-optical-sizing: auto; color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body { font-family: Poppins, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
 
   .slide {
     position: relative; width: 1920px; height: 1080px; overflow: hidden;
@@ -34,31 +37,28 @@
   .abs { position: absolute; }
   img.abs { object-fit: contain; }
 
-  /* Chrome shared by every slide. Inter for reading, Geist Mono for headings, labels and code. */
-  .mono     { font-family: "Geist Mono", monospace; }
+  /* Chrome shared by every slide, styled like the session banner. */
   .devcon   { left: 100px; top: 82px; width: 292px; height: 132px; }
-  .place    { right: 110px; top: 104px; text-align: right; font: 600 26px/1.2 "Geist Mono", monospace;
-              letter-spacing: .04em; color: var(--violet); }
-  .place small { display: block; font: 400 20px Inter, sans-serif; letter-spacing: 0; color: var(--muted); margin-top: 8px; }
+  .place    { right: 110px; top: 96px; text-align: right; font: 600 34px/1.25 Poppins, sans-serif; color: var(--violet); }
+  .place .date { display: block; font-weight: 400; color: var(--ink); }
+  .place .date b { font-weight: 400; color: var(--violet); }
+  .place small { display: block; font: 400 20px Poppins, sans-serif; color: var(--muted); margin-top: 6px; }
   .foss     { left: 106px; top: 974px; width: 220px; height: 56px; }
   .divider  { left: 352px; top: 982px; width: 2px; height: 40px; background: var(--soft); }
   .oe       { left: 376px; top: 972px; height: 60px; width: 172px; }
-  .pageno   { right: 110px; top: 988px; font: 500 20px "Geist Mono", monospace; color: var(--muted); }
-  .pageno b { color: var(--violet); font-weight: 700; }
+  .pageno   { right: 110px; top: 988px; font: 500 21px Poppins, sans-serif; color: var(--muted); }
+  .pageno b { color: var(--violet); font-weight: 600; }
 
-  .kicker   { left: 112px; top: 238px; font: 600 21px "Geist Mono", monospace; text-transform: uppercase;
-              letter-spacing: .1em; color: var(--violet); }
-  .h1       { left: 110px; top: 272px; width: 1700px; font: 600 54px/1.15 "Geist Mono", monospace; letter-spacing: -.03em; }
+  .kicker   { left: 112px; top: 238px; font: 600 22px Poppins, sans-serif; text-transform: uppercase;
+              letter-spacing: .08em; color: var(--violet); }
+  .h1       { left: 110px; top: 272px; width: 1700px; font: 500 56px/1.25 Poppins, sans-serif; letter-spacing: -.01em; }
   .h1 em    { font-style: normal; color: var(--violet); }
   .lede     { left: 112px; top: 352px; width: 1500px; font-size: 28px; font-weight: 400; color: var(--muted); line-height: 1.4; }
 
-  .lab      { font-size: 26px; font-weight: 600; line-height: 1.25; text-align: center; letter-spacing: -.01em; }
-  .sub      { font: 400 19px/1.35 "Geist Mono", monospace; text-align: center; color: var(--muted); }
-  .num      { font: 700 24px/1 "Geist Mono", monospace; color: #fff; text-align: center; }
-  .take     { font-weight: 700; color: var(--deep); text-align: center; letter-spacing: -.025em; }
-  .chip     { font: 500 18px/1 "Geist Mono", monospace; text-align: center; color: var(--deep); }
-  .code     { font: 700 36px/1 "Geist Mono", monospace; color: var(--violet); }
-  .desc     { font-size: 23px; font-weight: 500; color: var(--ink); line-height: 1.3; }
+  .lab      { font-size: 26px; font-weight: 500; line-height: 1.3; text-align: center; }
+  .sub      { font: 400 20px/1.35 Poppins, sans-serif; text-align: center; color: var(--muted); }
+  .take     { font-weight: 500; color: var(--ink); text-align: center; letter-spacing: -.01em; }
+  .desc     { font-size: 23px; font-weight: 400; color: var(--ink); line-height: 1.35; }
   .cell     { font-size: 24px; font-weight: 500; line-height: 1.3; text-align: center; color: var(--ink);
               display: flex; align-items: center; justify-content: center; }
   .diagram  { left: 0; top: 0; width: 1920px; height: 1080px; }
@@ -111,7 +111,7 @@ function img(c, src, x, y, w, h, style = '') {
 function chrome(c, top = false) {
   if (top) c.el.insertAdjacentHTML('beforeend', `
     <img class="abs devcon" src="assets/brand/devcon-viii-logo.png" alt="DevCon VIII India">
-    <div class="abs place">MUMBAI, INDIA · 5 NOV 2026<small>OTS Main Stage · 16:15 IST</small></div>`);
+    <div class="abs place">MUMBAI, INDIA<span class="date"><b>5</b> Nov, 2026</span><small>OTS Main Stage · 16:15 IST</small></div>`);
   c.el.insertAdjacentHTML('beforeend', `
     <img class="abs foss" src="assets/brand/fossasia-ots-logos.png" alt="FOSSASIA and OTS">
     <div class="abs divider"></div>
@@ -141,12 +141,12 @@ function slide1() {
   const c = ctxFor(1); chrome(c, true);
   c.el.querySelector('.pageno').remove();
   img(c, 'assets/brand/devcon-hero-art.png', 1236, 216, 684, 864);
-  text(c, 110, 316, 1120, 'What actually happens when you send an LLM request to Kubernetes?', 'h1',
-       'top:300px;width:1130px;font-size:72px;line-height:1.14');
-  img(c, 'assets/brand/speaker-photo.png', 112, 660, 108, 108);
-  circle(c, 166, 714, 120, { fill: 'none', stroke: VIO, strokeWidth: 3 });
-  text(c, 250, 670, 800, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:40px;font-weight:700');
-  text(c, 250, 726, 800, 'Engineer at Cld9.ai', 'desc', 'font-size:26px;font-weight:400;color:' + MUTED);
+  text(c, 110, 300, 1130, 'What Actually Happens When You Send an LLM Request to Kubernetes?', 'h1',
+       'width:1130px;font-size:70px;line-height:1.32');
+  img(c, 'assets/brand/speaker-photo.png', 112, 664, 112, 112);
+  circle(c, 168, 720, 124, { fill: 'none', stroke: VIO, strokeWidth: 3 });
+  text(c, 250, 672, 800, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:44px;font-weight:400;color:#4B4763');
+  text(c, 250, 734, 800, 'Engineer at Cld9.ai', 'desc', 'font-size:25px;color:' + MUTED);
 }
 
 const DIAGRAM_SLIDES = [
@@ -161,28 +161,28 @@ const DIAGRAM_SLIDES = [
 function slide7() {
   const c = ctxFor(7); chrome(c);
   c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
-  text(c, 108, 140, 1000, 'Thank you', 'take', 'text-align:left;font-size:108px;color:' + TXT);
-  underline(c, 116, 402, 282);
-  text(c, 112, 306, 1100, "Let's connect after the talk.", 'kicker', 'font-size:28px;letter-spacing:0;text-transform:none');
+  text(c, 104, 128, 1000, 'Thank you', 'take', 'text-align:left;font-size:104px;line-height:1.25');
+  underline(c, 116, 470, 286);
+  text(c, 112, 306, 1100, "Let's connect after the talk.", 'kicker', 'font-size:28px;font-weight:500;letter-spacing:0;text-transform:none');
 
-  text(c, 112, 372, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
+  text(c, 112, 368, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:500');
   const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
                'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
   bio.forEach((t, i) => {
     const y = 446 + i * 48;
     circle(c, 124, y + 17, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
-    text(c, 146, y, 1000, t, 'desc', 'font-size:27px;font-weight:400');
+    text(c, 146, y - 2, 1000, t, 'desc', 'font-size:26px');
   });
   text(c, 112, 666, 1100, 'Ask me about LLM serving on Kubernetes, KServe or OpenTelemetry.', 'desc',
-       'font-size:26px;font-weight:400;color:' + MUTED);
-  text(c, 112, 736, 900, 'github.com/atharvamhaske', 'lab', 'text-align:left;font: 600 30px "Geist Mono", monospace;color:' + INK);
+       'font-size:25px;color:' + MUTED);
+  text(c, 112, 736, 900, 'github.com/atharvamhaske', 'lab', 'text-align:left;font-size:30px;font-weight:500;color:' + VIO);
 
   // the speaker, cut out from the selfie, on a soft violet disc
   circle(c, 1590, 610, 680, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
   img(c, 'assets/brand/speaker-cutout.png', 1282, 176, 602, 904, 'object-fit:cover;object-position:top');
 }
 
-Promise.all([400, 500, 600, 700].flatMap(w => [document.fonts.load(w + ' 24px Inter'), document.fonts.load(w + ' 24px "Geist Mono"')])).then(() => {
+Promise.all([400, 500, 600, 700].map(w => document.fonts.load(w + ' 24px Poppins'))).then(() => {
   slide1();
   DIAGRAM_SLIDES.forEach(a => diagramSlide(...a));
   slide7();
