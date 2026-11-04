@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=1920">
 <title>LLM Request to Kubernetes</title>
 <!--
-  DevCon India VIII / FOSSASIA OTS 2026 lightning talk.
-  Each <section> is one 1920x1080 slide. Diagrams are drawn with rough.js,
-  the sketch engine behind Excalidraw, following the hand-drawn-diagrams
-  skill grammar: rectangles for components, ellipses for actors, bound
-  arrows, 1-5 word labels. Every shape is also recorded as an Excalidraw
-  element so build.js can write editable .excalidraw sources.
+  DevCon India VIII / FOSSASIA OTS 2026 lightning talk. Each <section> is one
+  1920x1080 slide. The diagrams on slides 2 to 6 are Excalidraw scenes
+  (src/diagrams/*.excalidraw, written by scripts/diagrams.py) rendered to SVG by
+  Excalidraw itself (scripts/render_diagrams.js). Slides 1 and 7 draw their
+  sketches with rough.js, the library Excalidraw uses for its strokes.
 -->
 <style>
   @font-face { font-family: Inter; font-weight: 100 900; src: url(assets/fonts/Inter.ttf); }
@@ -62,12 +61,11 @@
   .desc     { font-size: 23px; font-weight: 500; color: var(--ink); line-height: 1.3; }
   .cell     { font-size: 24px; font-weight: 500; line-height: 1.3; text-align: center; color: var(--ink);
               display: flex; align-items: center; justify-content: center; }
+  .diagram  { left: 0; top: 0; width: 1920px; height: 1080px; }
 </style>
 </head>
 <body>
-
 <section class="slide" data-slide="1"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
-
 <section class="slide" data-slide="2"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
 <section class="slide" data-slide="3"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
 <section class="slide" data-slide="4"><svg class="ink" viewBox="0 0 1920 1080"></svg></section>
@@ -81,88 +79,27 @@ const INK = '#5B21B6', VIO = '#7C3AED', SOFT = '#C4B5FD', TXT = '#1E1B2E', MUTED
 const TOTAL = 7;
 const params = new URLSearchParams(location.search);
 
-/* ---------- tiny drawing kit (rough.js + Excalidraw records) ---------- */
+/* ---------- small drawing kit for the sketches on slides 1 and 7 ---------- */
 let SEED = 7;
-window.__excalidraw = {};
-
 function ctxFor(n) {
   const el = document.querySelector(`section[data-slide="${n}"]`);
   const svg = el.querySelector('svg.ink');
-  const ex = (window.__excalidraw[n] = []);
-  return { n, el, svg, rc: rough.svg(svg), ex, id: 0 };
+  return { n, el, svg, rc: rough.svg(svg) };
 }
 const opts = (o = {}) => Object.assign({ stroke: INK, strokeWidth: 3, roughness: 1.1, bowing: 1.1, seed: SEED++ }, o);
-
-function exRec(c, type, x, y, w, h, o = {}, extra = {}) {
-  const id = `s${c.n}-${type}-${++c.id}`;
-  c.ex.push(Object.assign({
-    id, type, x: Math.round(x), y: Math.round(y), width: Math.round(w), height: Math.round(h), angle: 0,
-    strokeColor: o.stroke || INK, backgroundColor: o.fill && !o.fill.startsWith('rgba') ? o.fill : 'transparent',
-    fillStyle: o.fillStyle || 'solid', strokeWidth: Math.min(4, Math.round(o.strokeWidth || 2)),
-    strokeStyle: o.strokeLineDash ? 'dashed' : 'solid', roughness: 1, opacity: 100, groupIds: [], frameId: null,
-    roundness: type === 'rectangle' ? { type: 3 } : null, seed: o.seed || 1, version: 1, versionNonce: (o.seed || 1) * 7919,
-    isDeleted: false, boundElements: null, updated: 1, link: null, locked: false,
-  }, extra));
-  return id;
-}
 const put = (c, node) => (c.svg.appendChild(node), node);
-
-function rbox(c, x, y, w, h, o = {}) {
-  const r = o.r ?? 18;
-  const d = `M${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h}` +
-            ` H${x + r} Q${x},${y + h} ${x},${y + h - r} V${y + r} Q${x},${y} ${x + r},${y} Z`;
-  const oo = opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o));
-  put(c, c.rc.path(d, oo));
-  return exRec(c, 'rectangle', x, y, w, h, oo);
+function circle(c, cx, cy, d, o = {}) { put(c, c.rc.ellipse(cx, cy, d, d, opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o)))); }
+function poly(c, pts, o = {}) { put(c, c.rc.polygon(pts, opts(o))); }
+function line(c, pts, o = {}) { const oo = opts(o); put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo)); }
+function underline(c, x1, x2, y) {
+  line(c, [[x1, y], [(x1 + x2) / 2, y + 6], [x2, y - 2]], { curve: true, stroke: VIO, strokeWidth: 5, roughness: 1.4 });
 }
-function ellipse(c, cx, cy, w, h, o = {}) {
-  const oo = opts(Object.assign({ fill: PAPER, fillStyle: 'solid' }, o));
-  put(c, c.rc.ellipse(cx, cy, w, h, oo));
-  return exRec(c, 'ellipse', cx - w / 2, cy - h / 2, w, h, oo);
-}
-function circle(c, cx, cy, d, o = {}) { return ellipse(c, cx, cy, d, d, o); }
-function poly(c, pts, o = {}) {
-  const oo = opts(o);
-  put(c, c.rc.polygon(pts, oo));
-  recLine(c, 'line', pts.concat([pts[0]]), oo);
-}
-function line(c, pts, o = {}) {
-  const oo = opts(o);
-  put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo));
-  recLine(c, 'line', pts, oo);
-}
-function recLine(c, type, pts, oo, extra = {}) {
-  const [x0, y0] = pts[0];
-  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
-  return exRec(c, type, x0, y0, Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys), oo,
-    Object.assign({ points: pts.map(([x, y]) => [Math.round(x - x0), Math.round(y - y0)]) }, extra));
-}
-/** Arrow through pts; head at the last point. */
-function arrow(c, pts, o = {}) {
-  const oo = opts(Object.assign({ strokeWidth: 3 }, o));
-  put(c, o.curve ? c.rc.curve(pts, oo) : c.rc.linearPath(pts, oo));
-  const [px, py] = pts[pts.length - 2], [tx, ty] = pts[pts.length - 1];
-  const a = Math.atan2(ty - py, tx - px), L = o.head ?? 18;
-  const hd = opts({ stroke: oo.stroke, strokeWidth: oo.strokeWidth, roughness: 0.6 });
-  put(c, c.rc.linearPath([[tx - L * Math.cos(a - 0.5), ty - L * Math.sin(a - 0.5)], [tx, ty],
-                          [tx - L * Math.cos(a + 0.5), ty - L * Math.sin(a + 0.5)]], hd));
-  return recLine(c, 'arrow', pts, oo, { startArrowhead: null, endArrowhead: 'arrow',
-    startBinding: o.from ? { elementId: o.from, focus: 0, gap: 8 } : null,
-    endBinding: o.to ? { elementId: o.to, focus: 0, gap: 8 } : null });
-}
-function text(c, x, y, w, html, cls, style = '', o = {}) {
+function text(c, x, y, w, html, cls, style = '') {
   const d = document.createElement('div');
   d.className = 'abs ' + cls;
   d.style.cssText = `left:${x}px;top:${y}px;width:${w}px;` + style;
   d.innerHTML = html;
   c.el.appendChild(d);
-  if (o.ex !== false) {
-    const plain = d.innerText.trim();
-    const fs = parseFloat(getComputedStyle(d).fontSize);
-    exRec(c, 'text', x, y, w, d.offsetHeight || fs * 1.3, { stroke: getComputedStyle(d).color.startsWith('rgb(255') ? '#ffffff' : TXT },
-      { text: plain, originalText: plain, fontSize: fs, fontFamily: 2, textAlign: d.style.textAlign || (getComputedStyle(d).textAlign === 'center' ? 'center' : 'left'),
-        verticalAlign: 'top', containerId: null, autoResize: true, lineHeight: 1.25 });
-  }
   return d;
 }
 function img(c, src, x, y, w, h, style = '') {
@@ -172,21 +109,8 @@ function img(c, src, x, y, w, h, style = '') {
   c.el.appendChild(i);
   return i;
 }
-function badge(c, cx, cy, n) {
-  circle(c, cx, cy, 52, { fill: VIO, stroke: INK, strokeWidth: 2.5 });
-  text(c, cx - 26, cy - 13, 52, String(n), 'num');
-}
-function underline(c, x1, x2, y) {
-  line(c, [[x1, y], [(x1 + x2) / 2, y + 6], [x2, y - 2]], { curve: true, stroke: VIO, strokeWidth: 5, roughness: 1.4 });
-}
-function zap(c, cx, cy, s = 1, o = {}) {
-  const P = [[2, -30], [-14, 4], [0, 4], [-4, 30], [14, -6], [0, -6]].map(([x, y]) => [cx + x * s, cy + y * s]);
-  poly(c, P, Object.assign({ fill: VIO, fillStyle: 'solid', stroke: INK, strokeWidth: 2 }, o));
-}
-
 function chrome(c) {
-  const el = c.el;
-  el.insertAdjacentHTML('beforeend', `
+  c.el.insertAdjacentHTML('beforeend', `
     <img class="abs devcon" src="assets/brand/devcon-viii-logo.png" alt="DevCon VIII India">
     <div class="abs place">MUMBAI, INDIA · 5 NOV 2026<small>OTS Main Stage · 16:05 IST</small></div>
     <img class="abs foss" src="assets/brand/fossasia-ots-logos.png" alt="FOSSASIA and OTS">
@@ -195,72 +119,15 @@ function chrome(c) {
     <div class="abs pageno"><b>${c.n}</b> / ${TOTAL}</div>`);
 }
 function heading(c, kicker, h1) {
-  text(c, 112, 236, 1200, kicker, 'kicker');
+  text(c, 112, 238, 1200, kicker, 'kicker');
   text(c, 110, 272, 1700, h1, 'h1');
 }
-
-/* ---------- reusable doodles ---------- */
-function laptop(c, cx, cy, s = 1) {
-  rbox(c, cx - 50 * s, cy - 40 * s, 100 * s, 64 * s, { r: 6, strokeWidth: 3 });
-  poly(c, [[cx - 66 * s, cy + 28 * s], [cx + 66 * s, cy + 28 * s], [cx + 76 * s, cy + 40 * s], [cx - 76 * s, cy + 40 * s]],
-       { fill: SOFT, fillStyle: 'hachure', hachureGap: 5, strokeWidth: 2.5 });
-  text(c, cx - 50 * s, cy - 30 * s, 100 * s, '&gt;_', 'lab', `font-size:${30 * s}px;color:${VIO};font-weight:700`);
-}
-function fork(c, cx, cy, k = 1) {
-  const P = (x, y) => [cx + x * k, cy + y * k];
-  line(c, [P(-52, 0), P(-8, 0)], { strokeWidth: 3 });
-  arrow(c, [P(-8, 0), P(18, -16), P(48, -30)], { curve: true, head: 14 * Math.max(k, .8) });
-  arrow(c, [P(-8, 0), P(18, 16), P(48, 30)], { curve: true, head: 14 * Math.max(k, .8) });
-  arrow(c, [P(-8, 0), P(48, 0)], { head: 14 * Math.max(k, .8), stroke: SOFT });
-  circle(c, cx - 8 * k, cy, 16 * Math.max(k, .8), { fill: VIO, stroke: INK, strokeWidth: 2 });
-}
-function reconcile(c, cx, cy, r = 36) {
-  const oo = opts({ strokeWidth: 3.5 });
-  put(c, c.rc.arc(cx, cy, r * 2, r * 2, Math.PI * 0.15, Math.PI * 1.85, false, oo));
-  const a = Math.PI * 1.85, tx = cx + r * Math.cos(a), ty = cy + r * Math.sin(a);
-  const t = a + Math.PI / 2, L = 16;
-  put(c, c.rc.linearPath([[tx - L * Math.cos(t - .6), ty - L * Math.sin(t - .6)], [tx, ty], [tx - L * Math.cos(t + .6), ty - L * Math.sin(t + .6)]], opts({ strokeWidth: 3.5, roughness: .6 })));
-  exRec(c, 'ellipse', cx - r, cy - r, 2 * r, 2 * r, oo);
-}
-
-/* ---------- the request path, shared by slides 3 and 4 ---------- */
-const PX = [135, 480, 825, 1170, 1515], PY = 500, PW = 270, PH = 190, MID = PY + 95, LANE = 735;
-const PC = PX.map(x => x + PW / 2);   // 270, 615, 960, 1305, 1650
-
-function requestPath(c, broken = false) {
-  const hot = i => broken && (i === 2 || i === 3);
-  const ids = PX.map((x, i) => rbox(c, x, PY, PW, PH, hot(i) ? { stroke: VIO, strokeWidth: 5 } : {}));
-  PX.forEach((x, i) => badge(c, x + 8, PY + 8, i + 1));
-
-  laptop(c, PC[0], PY + 62, 1);
-  img(c, 'assets/k8s/svc.svg', PC[1] - 42, PY + 18, 84, 84);
-  img(c, 'assets/k8s/ing.svg', PC[2] - 42, PY + 18, 84, 84);
-  fork(c, PC[3] - 4, PY + 60);
-  // Model Pod: vLLM on GPU, Ollama on CPU, plus the Pod icon on the corner
-  img(c, 'assets/logos/vllm.png', PX[4] + 22, PY + 34, 118, 34);
-  text(c, PX[4] + 22, PY + 76, 118, 'GPU', 'chip', 'font-weight:600');
-  img(c, 'assets/logos/ollama.png', PX[4] + 178, PY + 20, 40, 56);
-  text(c, PX[4] + 150, PY + 76, 96, 'CPU', 'chip', 'font-weight:600');
-  img(c, 'assets/k8s/pod.svg', PX[4] + PW - 36, PY - 26, 60, 60);
-
-  const L = [['Client', 'your app or SDK'], ['DNS + Service', 'ClusterIP / LB'], ['Gateway', 'HTTPRoute · timeouts'],
-             ['Model proxy', 'routes by model name'], ['Model Pod', 'load · infer · stream']];
-  L.forEach(([a, b], i) => {
-    text(c, PX[i] + 10, PY + 110, PW - 20, a, 'lab');
-    text(c, PX[i] + 10, PY + 146, PW - 20, b, 'sub');
-  });
-
-  for (let i = 0; i < 4; i++) {
-    const x1 = PX[i] + PW + 8, x2 = PX[i + 1] - 8;
-    if (broken && i === 3) {
-      // the cold start: the hop exists, but nobody is home yet
-      line(c, [[x1, MID], [x1 + 18, MID], [x1 + 26, MID - 12], [x1 + 36, MID + 12], [x1 + 44, MID - 12], [x1 + 50, MID]], { stroke: VIO, strokeWidth: 4 });
-      arrow(c, [[x1 + 50, MID], [x2, MID]], { stroke: VIO, strokeWidth: 4, from: ids[i], to: ids[i + 1] });
-    } else {
-      arrow(c, [[x1, MID], [x2, MID]], { from: ids[i], to: ids[i + 1] });
-    }
-  }
-  return ids;
+/** A content slide: chrome, heading, and its Excalidraw diagram on top. */
+function diagramSlide(n, kicker, h1, lede) {
+  const c = ctxFor(n); chrome(c);
+  heading(c, kicker, h1);
+  if (lede) text(c, 112, 352, 1500, lede, 'lede');
+  img(c, `diagrams/slide-0${n}.svg`, 0, 0, 1920, 1080);
 }
 
 /* ---------- slides ---------- */
@@ -276,199 +143,14 @@ function slide1() {
   text(c, 250, 726, 800, 'Engineer at Cld9.ai', 'desc', 'font-size:26px;font-weight:400;color:' + MUTED);
 }
 
-function slide2() {
-  const c = ctxFor(2); chrome(c);
-  heading(c, 'The problem', 'You called <em>/v1/chat/completions</em>. Then what?');
-  text(c, 112, 352, 1500, "Platform teams can't see the path, so LLM calls fail in ways nobody can explain.", 'lede');
-
-  laptop(c, 290, 690, 1.7);
-  text(c, 150, 790, 280, 'Your app', 'lab');
-  text(c, 130, 828, 320, 'POST /v1/chat/completions', 'sub', 'font-size:18px');
-
-  // the cluster: you can't see the hops inside
-  const k = rbox(c, 560, 470, 700, 440, { r: 28, strokeLineDash: [14, 12], fill: 'rgba(255,255,255,0.55)', strokeWidth: 3.5 });
-  img(c, 'assets/logos/k8s.svg', 588, 494, 60, 60);
-  text(c, 662, 506, 400, 'Kubernetes', 'lab', 'text-align:left;font-size:30px');
-  arrow(c, [[440, 690], [500, 680], [552, 690]], { curve: true, to: k, strokeWidth: 3.5 });
-  text(c, 760, 580, 300, '?', 'take', 'font: 700 190px/1 "Geist Mono", monospace;color:' + VIO);
-  text(c, 600, 800, 620, 'DNS, gateway, proxy, autoscaler, Pod', 'sub', 'font-size:21px;color:' + INK);
-
-  // what comes back
-  const S = [['404', 'not found'], ['hang', 'no reply'], ['504', 'gateway timeout'], ['429', 'too many requests']];
-  S.forEach(([code, d], i) => {
-    const y = 470 + i * 114;
-    const id = rbox(c, 1390, y, 420, 92, { stroke: VIO, strokeWidth: 3.5 });
-    text(c, 1414, y + 28, 120, code, 'code');
-    text(c, 1544, y + 30, 260, d, 'desc', 'font-size:25px');
-    arrow(c, [[1266, 690], [1320, 690 + (y + 46 - 690) * 0.6], [1382, y + 46]], { curve: true, to: id, stroke: VIO, strokeWidth: 2.5, head: 14 });
-  });
-}
-
-function slide3() {
-  const c = ctxFor(3); chrome(c);
-  heading(c, 'The path', 'Follow one request, hop by hop');
-  requestPath(c);
-
-  // scale from zero, between the proxy and the Pod
-  const gx = (PX[3] + PW + PX[4]) / 2;
-  img(c, 'assets/k8s/hpa.svg', gx - 30, 392, 60, 60);
-  text(c, gx - 120, 456, 240, 'scale from zero', 'chip', 'font-size:19px;font-weight:600');
-  line(c, [[gx, 482], [gx, MID - 10]], { stroke: VIO, strokeWidth: 2.5, strokeLineDash: [8, 8] });
-
-  // tokens stream back
-  arrow(c, [[PC[4], PY + PH + 6], [PC[4], LANE], [PC[0], LANE], [PC[0], PY + PH + 6]], { stroke: VIO, strokeLineDash: [14, 10], strokeWidth: 3 });
-  const toks = ['data:', 'Kuber', 'netes', ' is', ' a', ' container', '…'];
-  let x = 470;
-  toks.forEach(t => {
-    const w = 26 + t.length * 12.5;
-    rbox(c, x, LANE - 19, w, 38, { r: 12, stroke: VIO, strokeWidth: 2 });
-    text(c, x, LANE - 9, w, t.trim() || '·', 'chip');
-    x += w + 26;
-  });
-  text(c, 1260, LANE + 12, 380, 'tokens stream back (SSE)', 'sub', 'text-align:left;color:' + INK + ';font-weight:500');
-
-  text(c, 360, 806, 1200, "It's never one Pod.", 'take', 'font-size:68px');
-  underline(c, 684, 1238, 896);
-}
-
-function slide4() {
-  const c = ctxFor(4); chrome(c);
-  heading(c, 'Where it breaks', 'Each hop fails in its own way');
-  const ids = requestPath(c, true);
-
-  // the return stream, cut at the gateway
-  line(c, [[PC[4], PY + PH + 6], [PC[4], LANE], [PC[2] + 34, LANE]], { stroke: VIO, strokeLineDash: [14, 10] });
-  arrow(c, [[PC[2] - 34, LANE], [PC[0], LANE], [PC[0], PY + PH + 6]], { stroke: VIO, strokeLineDash: [14, 10] });
-  [-10, 8].forEach(dx => line(c, [[PC[2] + dx - 6, LANE + 16], [PC[2] + dx + 6, LANE - 16]], { stroke: VIO, strokeWidth: 3.5, roughness: .5 }));
-
-  function callout(x, y, code, desc, to, leader) {
-    const id = rbox(c, x, y, 320, 96, { stroke: VIO, strokeWidth: 3.5 });
-    text(c, x + 22, y + 14, 280, code, 'code');
-    text(c, x + 22, y + 56, 290, desc, 'desc');
-    arrow(c, leader, { stroke: VIO, strokeWidth: 2.5, head: 13, from: id, to });
-  }
-  const gx = (PX[3] + PW + PX[4]) / 2;
-  callout(800, 374, '404', 'wrong API path', ids[2], [[960, 472], [960, PY - 4]]);
-  callout(gx - 160, 374, 'hang', 'cold model wakes up', ids[4], [[gx, 472], [gx, MID - 18]]);
-  callout(800, 790, '504', 'timeout kills the stream', ids[2], [[960, 788], [960, LANE + 34]]);
-  callout(1145, 790, '429', 'ignores token cost', ids[3], [[1305, 788], [1305, PY + PH + 6]]);
-
-  text(c, 135, 800, 620, 'Every one of these looks like<br><span style="color:#5B21B6;font-weight:700">"the model is broken."</span>', 'desc',
-       'font-size:32px;line-height:1.35');
-}
-
-function slide5() {
-  const c = ctxFor(5); chrome(c);
-  heading(c, 'How OpenEverest solved it', 'provider-kserve turns an Instance into an endpoint');
-  const Y = 470, H = 200, M = Y + H / 2;
-
-  // Mirrors the provider-kserve flowchart:
-  // User/API/UI -creates-> Instance -> provider-kserve -reconciles into-> LLMInferenceService
-  // -> KServe controllers -> Deployments, HPAs, Services, Routes; provider-kserve -status-> Instance
-  const you = ellipse(c, 194, M, 164, 150, { strokeWidth: 3 });
-  text(c, 114, M - 46, 160, 'You', 'lab', 'font-size:30px;font-weight:700');
-  text(c, 114, M - 4, 160, 'UI · API<br>kubectl', 'sub', 'font-size:20px;line-height:1.25');
-
-  const B = [[362, 230], [646, 238], [1000, 272], [1324, 190]];
-  const ids = B.map(([x, w]) => rbox(c, x, Y, w, H));
-  B.forEach(([x], i) => badge(c, x + 8, Y + 8, i + 1));
-  const cx = i => B[i][0] + B[i][1] / 2;
-
-  // 1 Instance
-  img(c, 'assets/logos/oe-icon-full-color-dark.svg', cx(0) - 40, Y + 18, 80, 80);
-  text(c, B[0][0] + 6, Y + 108, B[0][1] - 12, 'Instance', 'lab');
-  text(c, B[0][0] + 6, Y + 144, B[0][1] - 12, 'core.openeverest.io', 'sub', 'font-size:17px;color:' + INK + ';font-weight:500');
-  // 2 provider-kserve
-  reconcile(c, cx(1), Y + 60, 36);
-  img(c, 'assets/logos/oe-icon-full-color-dark.svg', cx(1) - 20, Y + 40, 40, 40);
-  text(c, B[1][0] + 4, Y + 108, B[1][1] - 8, 'provider-kserve', 'lab');
-  text(c, B[1][0] + 4, Y + 144, B[1][1] - 8, 'reconciles', 'sub');
-  // 3 LLMInferenceService / InferenceService
-  img(c, 'assets/logos/kserve-logo.png', cx(2) - 38, Y + 16, 76, 76);
-  text(c, B[2][0] + 4, Y + 98, B[2][1] - 8, 'LLMInferenceService', 'lab', 'font-size:23px');
-  text(c, B[2][0] + 4, Y + 132, B[2][1] - 8, 'or InferenceService', 'sub', 'font-size:20px');
-  text(c, B[2][0] + 4, Y + 160, B[2][1] - 8, 'serving.kserve.io', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
-  // 4 KServe controllers
-  gear(c, cx(3), Y + 58);
-  text(c, B[3][0] + 4, Y + 104, B[3][1] - 8, 'KServe<br>controllers', 'lab');
-
-  // the Kubernetes objects KServe creates: a stack of resources
-  const RX = 1566, RW = 210;
-  rbox(c, RX + 24, Y - 24, RW, H, { stroke: SOFT, strokeWidth: 2.5 });
-  rbox(c, RX + 12, Y - 12, RW, H, { stroke: SOFT, strokeWidth: 2.5 });
-  const res = rbox(c, RX, Y, RW, H);
-  [['deploy', 'Deployments'], ['hpa', 'HPAs'], ['svc', 'Services'], ['ing', 'Routes']].forEach(([ic, lb], r) => {
-    const y = Y + 14 + r * 44;
-    img(c, `assets/k8s/${ic}.svg`, RX + 14, y, 40, 40);
-    text(c, RX + 60, y + 9, 146, lb, 'sub', 'text-align:left;font-size:19px;font-weight:500;color:' + INK);
-  });
-
-  arrow(c, [[284, M], [B[0][0] - 8, M]], { from: you, to: ids[0] });
-  text(c, 274, M - 34, 90, 'creates', 'chip', 'font-size:16px');
-  for (let i = 0; i < 3; i++) arrow(c, [[B[i][0] + B[i][1] + 8, M], [B[i + 1][0] - 8, M]], { from: ids[i], to: ids[i + 1] });
-  text(c, 884, M - 62, 116, 'reconciles<br>into', 'chip', 'font-size:16px;line-height:1.25');
-  arrow(c, [[B[3][0] + B[3][1] + 8, M], [RX - 8, M]], { from: ids[3], to: res });
-
-  // provider-kserve writes status and endpoints back to the Instance
-  const lane = 732;
-  arrow(c, [[cx(1), Y + H + 6], [cx(1), lane], [cx(0), lane], [cx(0), Y + H + 6]], { stroke: VIO, strokeLineDash: [14, 10], from: ids[1], to: ids[0] });
-  rbox(c, (cx(0) + cx(1)) / 2 - 125, lane - 21, 250, 42, { r: 21, stroke: VIO, strokeWidth: 2.5 });
-  text(c, (cx(0) + cx(1)) / 2 - 125, lane - 11, 250, 'status, endpoints', 'chip', 'font-size:21px;font-weight:600');
-  rbox(c, 362, 776, 520, 50, { r: 25, stroke: INK, strokeWidth: 2, fill: '#EDE9FE' });
-  line(c, [[384, 801], [394, 812], [414, 788]], { stroke: VIO, strokeWidth: 4, roughness: .6 });
-  text(c, 426, 787, 450, 'Ready · https://qwen-demo…/v1', 'chip', 'text-align:left;color:' + TXT + ';font-size:22px');
-
-  text(c, 260, 846, 1400, 'Declare intent. Get an endpoint back.', 'take', 'font-size:56px');
-  underline(c, 1046, 1414, 920);
-}
-
-function gear(c, cx, cy, r = 34) {
-  const pts = [];
-  for (let k = 0; k < 16; k++) {
-    const a = (k / 16) * Math.PI * 2, rr = k % 2 ? r * 0.78 : r;
-    pts.push([cx + rr * Math.cos(a - .1), cy + rr * Math.sin(a - .1)], [cx + rr * Math.cos(a + .1), cy + rr * Math.sin(a + .1)]);
-  }
-  poly(c, pts, { fill: SOFT, fillStyle: 'hachure', hachureGap: 5, strokeWidth: 2.5, roughness: .7 });
-  circle(c, cx, cy, r * 0.62, { fill: PAPER, strokeWidth: 2.5 });
-}
-
-function slide6() {
-  const c = ctxFor(6); chrome(c);
-  heading(c, 'Same hops, any stack', 'Three stacks, the same four hops');
-  const top = 376, hh = 84, rh = 90, L = 112, R = 1810, COL = [480, 940, 1400];
-  const bottom = top + hh + rh * 4;
-  rbox(c, L, top, R - L, bottom - top, { r: 22, fill: 'rgba(255,255,255,0.7)', strokeWidth: 3 });
-  line(c, [[L + 6, top + hh], [R - 6, top + hh]], { strokeWidth: 3 });
-  for (let r = 1; r < 4; r++) line(c, [[L + 14, top + hh + r * rh], [R - 14, top + hh + r * rh]], { stroke: SOFT, strokeWidth: 2.5 });
-  COL.forEach(x => line(c, [[x, top + 10], [x, bottom - 10]], { stroke: SOFT, strokeWidth: 2.5 }));
-
-  // headers
-  const cx = [710, 1170, 1605];
-  img(c, 'assets/logos/kserve-logo.png', cx[0] - 92, top + 16, 52, 52);
-  text(c, cx[0] - 30, top + 22, 200, 'KServe', 'lab', 'text-align:left;font-size:30px;font-weight:700');
-  text(c, cx[1] - 150, top + 22, 300, 'KubeAI', 'lab', 'font-size:30px;font-weight:700');
-  img(c, 'assets/logos/k8s.svg', cx[2] - 120, top + 18, 48, 48);
-  text(c, cx[2] - 62, top + 22, 240, 'Hand-rolled', 'lab', 'text-align:left;font-size:30px;font-weight:700');
-
-  const rows = [
-    ['ing', 'Gateway', 'Envoy AI Gateway', 'Ingress to KubeAI', 'ingress-nginx'],
-    ['fork', 'Model routing', 'InferencePool + endpoint picker', 'proxy reads the <span class="mono">model</span> field', 'one path per model'],
-    ['hpa', 'Scale from zero', 'Knative or KEDA', 'built in, to zero', 'HPA, min 1 replica'],
-    ['pod', 'Model Pod', 'vLLM runtime', 'vLLM or Ollama', 'vLLM Deployment'],
-  ];
-  rows.forEach(([ic, hop, ...cells], r) => {
-    const y = top + hh + r * rh;
-    if (ic === 'fork') fork(c, L + 49, y + rh / 2, 0.62);
-    else img(c, `assets/k8s/${ic}.svg`, L + 22, y + 18, 54, 54);
-    text(c, L + 96, y + 27, 270, hop, 'lab', 'text-align:left');
-    cells.forEach((t, k) => {
-      const x0 = k === 0 ? COL[0] : COL[k], x1 = k === 2 ? R : COL[k + 1];
-      text(c, x0 + 14, y + 6, x1 - x0 - 28, `<span>${t}</span>`, 'cell', `height:${rh - 12}px`);
-    });
-  });
-
-  text(c, 360, 862, 1200, 'Map the path, not the brand.', 'take', 'font-size:56px');
-}
+const DIAGRAM_SLIDES = [
+  [2, 'The problem', 'You called <em>/v1/chat/completions</em>. Then what?',
+   "Platform teams can't see the path, so LLM calls fail in ways nobody can explain."],
+  [3, 'The path', 'Follow one request, hop by hop'],
+  [4, 'Where it breaks', 'Each hop fails in its own way'],
+  [5, 'How OpenEverest solved it', 'provider-kserve turns an Instance into an endpoint'],
+  [6, 'Same hops, any stack', 'Three stacks, the same four hops'],
+];
 
 function slide7() {
   const c = ctxFor(7); chrome(c);
@@ -544,12 +226,13 @@ function gatewayOfIndia(c, x0, ground, s) {
   });
   [[80, 520], [150, 560]].forEach(([bx, by]) =>
     line(c, [[X(bx - 22), Y(by + 6)], [X(bx - 9), Y(by + 12)], [X(bx), Y(by)], [X(bx + 9), Y(by + 12)], [X(bx + 22), Y(by + 6)]], { curve: true, stroke: INK, strokeWidth: 2.5 }));
-  exRec(c, 'rectangle', X(-30), Y(500), 820 * s, 500 * s, opts({ strokeWidth: 2 }));
   text(c, X(380) - 240, Y(-70), 480, 'Gateway of India, Mumbai', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
 }
 
 Promise.all([400, 500, 600, 700].flatMap(w => [document.fonts.load(w + ' 24px Inter'), document.fonts.load(w + ' 24px "Geist Mono"')])).then(() => {
-  [slide1, slide2, slide3, slide4, slide5, slide6, slide7].forEach(f => f());
+  slide1();
+  DIAGRAM_SLIDES.forEach(a => diagramSlide(...a));
+  slide7();
   const imgs = [...document.images];
   return Promise.all(imgs.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })));
 }).then(() => { window.__ready = true; });

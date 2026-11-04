@@ -1,4 +1,5 @@
-// Render src/slides.html to PNG (3840x2160), a vector PDF, and Excalidraw sources.
+// Render src/slides.html to PNG (3840x2160) and a vector PDF, and copy the Excalidraw sources.
+// Run scripts/diagrams.py and scripts/render_diagrams.js first (or `npm run build`).
 // Usage (from the deck folder): node scripts/build.js
 // If src/assets/brand/devcon-8-india-bg.png exists, slide 7 uses it instead of the sketch.
 const { chromium } = require('playwright');
@@ -31,14 +32,11 @@ const only = process.argv[2] ? Number(process.argv[2]) : null; // optional: rend
   }
   if (only) { await browser.close(); return; }
 
-  const scenes = await page.evaluate(() => window.__excalidraw);
-  for (const [n, elements] of Object.entries(scenes)) {
-    const file = path.join(OUT, 'excalidraw', `slide-${String(n).padStart(2, '0')}.excalidraw`);
-    fs.writeFileSync(file, JSON.stringify({
-      type: 'excalidraw', version: 2, source: 'https://excalidraw.com', elements,
-      appState: { viewBackgroundColor: '#F4F2FF', gridSize: null }, files: {},
-    }, null, 2));
-    console.log('excalidraw', path.relative(ROOT, file), elements.length, 'elements');
+  // The editable sources are the Excalidraw scenes the diagrams were rendered from.
+  const SCENES = path.join(ROOT, 'src', 'diagrams');
+  for (const f of fs.readdirSync(SCENES).filter(f => f.endsWith('.excalidraw'))) {
+    fs.copyFileSync(path.join(SCENES, f), path.join(OUT, 'excalidraw', f));
+    console.log('excalidraw', path.join('export/excalidraw', f));
   }
 
   await page.emulateMedia({ media: 'print' });

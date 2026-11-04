@@ -9,7 +9,7 @@ This is the deck for a 5-minute lightning talk at DevCon India VIII / FOSSASIA O
 | `export/llm-request-to-kubernetes.pptx` | Present from PowerPoint, Keynote or Google Slides. Each slide has speaker notes with its time slot. |
 | `export/llm-request-to-kubernetes.pdf` | Backup for the stage laptop. The text is vector, so it stays sharp on a large screen. |
 | `export/png/slide-01.png` to `slide-07.png` | One 3840x2160 image per slide. |
-| `export/excalidraw/slide-01.excalidraw` to `slide-07.excalidraw` | The diagram shapes and text, which you can edit at excalidraw.com. They don't include logos or icons. |
+| `export/excalidraw/slide-02.excalidraw` to `slide-06.excalidraw` | The diagrams as Excalidraw scenes, with the icons and logos embedded. Open them at excalidraw.com to edit. |
 
 To open the deck in Google Slides, upload the PPTX to Google Drive and choose Open with Google Slides.
 
@@ -28,8 +28,9 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 ## Style
 
 - The background is the DevCon lavender gradient, from `#F4F2FF` to `#E9E6FB`. The only accent colour is violet `#7C3AED`, with `#5B21B6` and `#C4B5FD` as darker and lighter shades. Text is `#1E1B2E`.
-- Body text and diagram labels use Inter. Headings, kickers, status codes and API names use Geist Mono. Both fonts follow the `atharva-design` skill.
-- The diagrams are drawn with [rough.js](https://roughjs.com), the sketch library that Excalidraw uses. They follow the [hand-drawn-diagrams](https://github.com/nexu-io/open-design/tree/main/skills/hand-drawn-diagrams) rules, which ask for one idea per diagram, labels of 1 to 5 words and arrows attached to the boxes they connect. Every scene passes the skill's `validate_excalidraw.py` with 0 errors.
+- Headings, kickers and the page chrome use Geist Mono, and body text uses Inter, following the `atharva-design` skill. The diagrams and takeaways use Excalifont.
+- The diagrams on slides 2 to 6 are real Excalidraw scenes. They follow the [excalidraw-diagram-generator](https://github.com/github/awesome-copilot/tree/main/skills/excalidraw-diagram-generator) skill, so every text element uses Excalifont and every arrow is bound to the shapes it connects. They also follow the [hand-drawn-diagrams](https://github.com/nexu-io/open-design/tree/main/skills/hand-drawn-diagrams) rules of one idea per diagram and labels of 1 to 5 words. `scripts/diagrams.py` writes the scenes and `scripts/render_diagrams.js` renders them to SVG with Excalidraw's own `exportToSvg`, so the slides match excalidraw.com exactly. Every scene passes the hand-drawn-diagrams `validate_excalidraw.py` with 0 errors.
+- The Gateway of India sketch on slide 7 is drawn with [rough.js](https://roughjs.com), the library Excalidraw uses for its strokes.
 - The slide text follows the `unslop` skill. It uses straight quotes, has no em dashes and puts sentence case on every heading.
 - Every slide has the DevCon VIII logo top-left, `MUMBAI, INDIA · 5 NOV 2026` top-right and the FOSSASIA, OTS and OpenEverest logos bottom-left.
 
@@ -46,9 +47,14 @@ To use the official Gateway of India artwork on slide 7, save it as `src/assets/
 
 ```bash
 cd docs/devcon-india-2026-lightning-talk
+npm install                            # Excalidraw, React and esbuild, for the diagram renderer
 python3 scripts/prep_brand_assets.py   # only if the title slide changes
-node scripts/build.js                  # PNG, PDF and Excalidraw files (needs Playwright)
+python3 scripts/diagrams.py            # write the Excalidraw scenes
+node scripts/render_diagrams.js        # render them to SVG with Excalidraw (needs Playwright)
+node scripts/build.js                  # PNG and PDF
 python3 scripts/make_pptx.py           # PPTX with speaker notes (needs python-pptx)
 ```
+
+`npm run build` runs the last four steps.
 
 The slide source is `src/slides.html`, which you can also open in a browser.

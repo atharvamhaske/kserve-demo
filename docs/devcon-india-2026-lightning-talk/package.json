@@ -1,0 +1,15 @@
+{
+  "name": "devcon-india-2026-lightning-talk",
+  "private": true,
+  "description": "Build tooling for the lightning talk deck",
+  "scripts": {
+    "diagrams": "python3 scripts/diagrams.py && node scripts/render_diagrams.js",
+    "build": "npm run diagrams && node scripts/build.js && python3 scripts/make_pptx.py"
+  },
+  "devDependencies": {
+    "@excalidraw/excalidraw": "0.18.0",
+    "esbuild": "0.25.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}
