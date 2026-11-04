@@ -177,7 +177,8 @@ def request_path(s: Scene, broken=False):
 def whoami():
     """Slide 2, the speaker intro, after the speaker's own Excalidraw mock.
 
-    Only the drawing lives in the scene (logo, bullet dots, photo frame).
+    Only the drawing lives in the scene (logo, bullet dots, photo frame). The photo
+    and the text are placed in slides.html.
     The text is set in Poppins in slides.html, to match the title slide.
     """
     s = Scene(2)
@@ -187,8 +188,7 @@ def whoami():
         s.ellipse(106, y + 14, 16, 16, stroke=INK, fill=VIO)
     # the photo in a double hand-drawn frame
     s.rect(1182, 182, 680, 766, stroke=MUTED, fill="transparent", sw=1.5)
-    s.rect(1170, 170, 690, 770, stroke=TXT, fill=PAPER, sw=2.5)
-    s.image("brand/speaker-cutout.png", 1274, 186, 482, 745)
+    s.rect(1170, 170, 690, 770, stroke=TXT, fill="transparent", sw=2.5)
     s.save()
 
 

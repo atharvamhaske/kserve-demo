@@ -36,7 +36,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 
 ## Assets
 
-- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork (used on slides 1 and 8) and the round speaker photo out of it, with transparent backgrounds. The folder also holds `speaker-cutout.png` for slide 2. It is the speaker's mirror selfie, flipped so the T-shirt text reads correctly, with the background removed by [rembg](https://github.com/danielgatis/rembg). The `u2net_human_seg` model finds the person and `isnet-general-use` keeps the phone.
+- `src/assets/brand/` holds the official title slide. `scripts/prep_brand_assets.py` cuts the DevCon VIII logo, the FOSSASIA and OTS logos the DevCon diamond artwork (used on slides 1 and 8) and the round speaker photo out of it, with transparent backgrounds. The folder also holds `speaker-selfie.jpg` for slide 2, the speaker's mirror selfie flipped so the T-shirt text reads correctly and cropped to the photo frame.
 - `src/assets/k8s/` holds the official Kubernetes icons from [kubernetes/community](https://github.com/kubernetes/community/tree/master/icons).
 - `src/assets/logos/` holds the Kubernetes, KServe, vLLM, Ollama, FOSSASIA and OpenEverest logos. The OpenEverest logo comes from its brand kit.
 - `src/assets/fonts/` holds Poppins, under the SIL Open Font License.

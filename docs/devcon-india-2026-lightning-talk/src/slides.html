@@ -162,6 +162,8 @@ const DIAGRAM_SLIDES = [
 /** Slide 2: who am I. The drawing is an Excalidraw scene; the text is Poppins, like the title. */
 function slide2() {
   const c = ctxFor(2); chrome(c);
+  // the selfie with its own background, inside the hand-drawn frame
+  img(c, 'assets/brand/speaker-selfie.jpg', 1184, 184, 662, 742, 'object-fit:cover;border-radius:14px');
   img(c, 'diagrams/slide-02.svg', 0, 0, 1920, 1080);
   text(c, 1380, 38, 500, 'Mumbai, India · 5 Nov 2026', 'desc', 'font-size:24px;text-align:right;color:' + MUTED);
   // The name is what people should read first: a small label above it, the bio below.
