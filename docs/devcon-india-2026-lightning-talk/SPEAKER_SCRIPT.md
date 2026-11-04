@@ -8,7 +8,8 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 - One line is one breath. Say it, then look up.
 - `(pause)` is two seconds. Count them.
-- `(click)` is the next slide. Click, then speak.
+- `(click)` is one press on the remote. Press, wait for the slide, then speak. Eight slides, seven presses.
+- **Laser:** in each **Do** line says where to hold the dot. Hold it still for one second, then switch the laser off and look at the room. Never wave it, and never point it at people.
 - Lines marked **[cut]** are the first to go if the clock is late. Skip them and the talk still makes sense.
 - Contractions are written out so the lines are easy to scan. Say them the way you talk.
 - The last line of each slide is the takeaway. Say it slowly. Then click.
@@ -17,7 +18,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Before you start (slide 1 on screen) · 0:00 to 0:40 · 97 words
 
-**Do:** Walk to the mic. Stop. Look at the room before you say anything.
+**Do:** Walk to the mic with the remote in your hand. Stop. Look at the room before you say anything. **Laser:** off.
 
 **Say:**
 
@@ -46,7 +47,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 2: Who am I · 0:40 to 1:15 · 97 words
 
-**Do:** `(click)`. Keep this short. The room wants the problem, not the bio. Say the OpenEverest line slowly. It is the one new term here.
+**Do:** `(click)`. Keep this short. The room wants the problem, not the bio. Say the OpenEverest line slowly. It is the one new term here. **Laser:** off. Just talk.
 
 **Say:**
 
@@ -64,7 +65,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 3: The problem · 1:15 to 1:45 · 92 words
 
-**Do:** `(click)`. Point at "Your app" on the left. Sweep your hand across the dashed Kubernetes box. Then point at the four codes on the right.
+**Do:** `(click)`. **Laser:** dot on "Your app" at "Your app calls". Dot on the dashed Kubernetes box at "Where did this request go?". Dot on each code as you say 404, hang, 504, 429. Off.
 
 **Say:**
 
@@ -85,7 +86,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 4: The path · 1:45 to 2:30 · 119 words
 
-**Do:** `(click)`. Point at each box, left to right, as you say its number. At the end, trace the dashed arrow back to the client.
+**Do:** `(click)`. **Laser:** one dot per box, left to right, as you say its number. One, two, three, four, five. At "along the same path" trace the dashed arrow back to the client once. Off.
 
 **Say:**
 
@@ -104,7 +105,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 5: Where it breaks · 2:30 to 3:15 · 107 words
 
-**Do:** `(click)`. Same picture. Point at each note as you name it: 404 above the gateway, hang above the Pod, 504 and 429 below.
+**Do:** `(click)`. Same picture. **Laser:** dot on each note as you name it: 404 above the gateway, hang above the Pod, 504 and 429 below. Off before "Every one of these".
 
 **Say:**
 
@@ -123,7 +124,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 6: How OpenEverest solved it · 3:15 to 3:55 · 109 words
 
-**Do:** `(click)`. Follow the boxes left to right with your hand. Then trace the dashed "status, endpoints" arrow back to the Instance. Point at the "Ready" line.
+**Do:** `(click)`. **Laser:** dot on the Instance at "You create one object". Dot on provider-kserve, then on the LLMInferenceService, then on the KServe box, as you name each. Trace the dashed "status, endpoints" arrow back to the Instance at "writes the status". Dot on "Ready". Off.
 
 **Say:**
 
@@ -145,7 +146,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 7: Same hops, any stack · 3:55 to 4:30 · 94 words
 
-**Do:** `(click)`. Point at the three column headers. Then run your finger down the four rows.
+**Do:** `(click)`. **Laser:** dot on the three column headers once. Then one dot at the start of each row as you name it: Gateway, Model routing, Scale from zero, Model Pod. Off before "Different names".
 
 **Say:**
 
@@ -164,7 +165,7 @@ Slot: 5:00 on stage, plus 1:00 buffer. Without the **[cut]** lines the script ru
 
 ## Slide 8: Thank you · 4:30 to 4:55 · 61 words
 
-**Do:** `(click)`. Hold the slide still so people can scan the QR code. Say the last line slowly.
+**Do:** `(click)`. Hold the slide still so people can scan the QR code. **Laser:** one dot on the QR code at "Scan the QR code", then off. Put the remote down. Say the last line slowly.
 
 **Say:**
 
@@ -207,6 +208,8 @@ The windows assume 140 words a minute and no **[cut]** lines. The full script is
 
 ## Terms you say, one line each
 
+The full list, with what the provider builds and what KServe does, is in [TERMS.md](TERMS.md).
+
 Say the short form the first time a term comes up. The script already does this. Use this list if someone asks after the talk.
 
 | Term | Say |
@@ -227,6 +230,14 @@ Say the short form the first time a term comes up. The script already does this.
 ## One-breath version (if the laptop dies)
 
 > One call. Five hops. DNS, gateway, proxy, autoscaler, Pod. Each one fails its own way: 404, hang, 504, 429. Map the path, not the brand. Thank you, Mumbai!
+
+## Remote and laser
+
+- Test the remote on slide 1 before you are introduced. Press forward once, then back once.
+- One press per slide. If a slide does not change, wait one second before you press again. Two presses skip a slide.
+- The laser is for one thing at a time. Dot, hold, off. Say the word while the dot is on the box, not before.
+- Slide 2 and slide 8 need no laser. Slides 3 to 7 do.
+- If the laser dies, point with your open hand. The **Do** lines work the same way.
 
 ## Cheat card (print this)
 

@@ -10,6 +10,8 @@ This is the deck for a 5-minute lightning talk at DevCon India VIII / FOSSASIA O
 | `export/llm-request-to-kubernetes.pdf` | Backup for the stage laptop. The text is vector, so it stays sharp on a large screen. |
 | `export/png/slide-01.png` to `slide-08.png` | One 3840x2160 image per slide. |
 | `export/excalidraw/slide-02.excalidraw` to `slide-07.excalidraw` | The intro and the diagrams as Excalidraw scenes, with the icons and logos embedded. Open them at excalidraw.com to edit. |
+| `SPEAKER_SCRIPT.md` | The script to rehearse from: one line per breath, remote and laser cues per slide, timing windows, and what to drop if the clock is late. |
+| `TERMS.md` | Every name in the talk in plain words: OpenEverest, Instance, Provider, provider-kserve, provider-sdk, KServe, the gateway, with who builds what and the answers for the hallway. |
 
 To open the deck in Google Slides, upload the PPTX to Google Drive and choose Open with Google Slides.
 
