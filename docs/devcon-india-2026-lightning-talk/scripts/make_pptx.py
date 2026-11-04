@@ -40,10 +40,10 @@ NOTES = [
     "Each of these looks like 'the model is broken'.",
 
     "2:50-3:55 · How OpenEverest solved it\n"
-    "You declare a model as an Instance (core.openeverest.io) from the UI, API or kubectl. "
+    "You create a model as an Instance (core.openeverest.io) from the UI, the API or kubectl. "
     "provider-kserve reconciles it into a KServe LLMInferenceService or InferenceService (serving.kserve.io). "
     "The KServe controllers create the Deployments, HPAs, Services and Routes. "
-    "Status and the endpoint are written back to the Instance. "
+    "provider-kserve writes status and endpoints back to the Instance, so you get a ready URL. "
     "Declare intent. Get an endpoint back.",
 
     "3:55-4:40 · Same hops, any stack\n"
@@ -52,6 +52,7 @@ NOTES = [
     "Only the component names change. Map the path, not the brand.",
 
     "4:40-5:00 · Thank you\n"
+    "I'm Atharva, AI and Infra Engineer at Cld9.ai, a former GSoC 2026 mentee and an OpenTelemetry member. "
     "Scan the QR for my speaker page. The code is at github.com/openeverest/provider-kserve. "
     "Thank you.",
 ]

@@ -255,8 +255,8 @@ function requestPath(c, broken = false) {
   text(c, PX[4] + 150, PY + 76, 96, 'CPU', 'chip', 'font-weight:600');
   img(c, 'assets/k8s/pod.svg', PX[4] + PW - 36, PY - 26, 60, 60);
 
-  const L = [['Client', 'your app or SDK'], ['DNS + Service', 'name to IP'], ['Gateway', 'Ingress, TLS, auth'],
-             ['Model proxy', 'routes by model name'], ['Model Pod', 'streams tokens']];
+  const L = [['Client', 'your app or SDK'], ['DNS + Service', 'ClusterIP / LB'], ['Gateway', 'HTTPRoute · timeouts'],
+             ['Model proxy', 'routes by model name'], ['Model Pod', 'load · infer · stream']];
   L.forEach(([a, b], i) => {
     text(c, PX[i] + 10, PY + 110, PW - 20, a, 'lab');
     text(c, PX[i] + 10, PY + 146, PW - 20, b, 'sub');
@@ -375,50 +375,74 @@ function slide5() {
   heading(c, 'How OpenEverest solved it', 'One object in, a working endpoint out');
   const Y = 470, H = 200, M = Y + H / 2;
 
-  const you = ellipse(c, 222, M, 206, 160, { strokeWidth: 3 });
-  text(c, 122, M - 34, 200, 'You', 'lab', 'font-size:30px;font-weight:700');
-  text(c, 122, M + 6, 200, 'UI · API · kubectl', 'sub', 'font-size:20px');
+  // Mirrors the provider-kserve flowchart:
+  // User/API/UI -creates-> Instance -> provider-kserve -reconciles into-> LLMInferenceService
+  // -> KServe controllers -> Deployments, HPAs, Services, Routes; provider-kserve -status-> Instance
+  const you = ellipse(c, 194, M, 164, 150, { strokeWidth: 3 });
+  text(c, 114, M - 46, 160, 'You', 'lab', 'font-size:30px;font-weight:700');
+  text(c, 114, M - 4, 160, 'UI · API<br>kubectl', 'sub', 'font-size:20px;line-height:1.25');
 
-  const B = [[372, 262], [704, 262], [1036, 300], [1406, 404]];
+  const B = [[362, 230], [646, 238], [1000, 272], [1324, 190]];
   const ids = B.map(([x, w]) => rbox(c, x, Y, w, H));
   B.forEach(([x], i) => badge(c, x + 8, Y + 8, i + 1));
+  const cx = i => B[i][0] + B[i][1] / 2;
 
   // 1 Instance
-  img(c, 'assets/logos/oe-icon-full-color-dark.svg', 503 - 40, Y + 18, 80, 80);
-  text(c, 378, Y + 108, 250, 'Instance', 'lab');
-  text(c, 378, Y + 144, 250, 'core.openeverest.io', 'sub', 'color:' + INK + ';font-weight:500');
+  img(c, 'assets/logos/oe-icon-full-color-dark.svg', cx(0) - 40, Y + 18, 80, 80);
+  text(c, B[0][0] + 6, Y + 108, B[0][1] - 12, 'Instance', 'lab');
+  text(c, B[0][0] + 6, Y + 144, B[0][1] - 12, 'core.openeverest.io', 'sub', 'color:' + INK + ';font-weight:500');
   // 2 provider-kserve
-  reconcile(c, 835, Y + 60, 36);
-  img(c, 'assets/logos/oe-icon-full-color-dark.svg', 835 - 20, Y + 40, 40, 40);
-  text(c, 704, Y + 108, 262, 'provider-kserve', 'lab');
-  text(c, 704, Y + 144, 262, 'turns intent into KServe', 'sub');
-  // 3 LLMInferenceService
-  img(c, 'assets/logos/kserve-logo.png', 1186 - 38, Y + 16, 76, 76);
-  text(c, 1041, Y + 98, 290, 'LLMInferenceService', 'lab', 'font-size:24px');
-  text(c, 1041, Y + 132, 290, 'or InferenceService', 'sub', 'font-size:20px');
-  text(c, 1041, Y + 160, 290, 'serving.kserve.io', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
-  // 4 KServe controllers -> Kubernetes objects
-  text(c, 1416, Y + 18, 384, 'KServe controllers', 'lab');
-  [['deploy', 'Deployment', 0, 0], ['svc', 'Service', 0, 1], ['hpa', 'HPA', 1, 0], ['ing', 'Route', 1, 1]].forEach(([ic, lb, col, row]) => {
-    const x = 1406 + (col ? 236 : 24), y = Y + 64 + row * 64;
-    img(c, `assets/k8s/${ic}.svg`, x, y, 54, 54);
-    text(c, x + 60, y + 13, 140, lb, 'sub', 'text-align:left;font-weight:500;color:' + INK);
+  reconcile(c, cx(1), Y + 60, 36);
+  img(c, 'assets/logos/oe-icon-full-color-dark.svg', cx(1) - 20, Y + 40, 40, 40);
+  text(c, B[1][0] + 4, Y + 108, B[1][1] - 8, 'provider-kserve', 'lab');
+  text(c, B[1][0] + 4, Y + 144, B[1][1] - 8, 'reconciles', 'sub');
+  // 3 LLMInferenceService / InferenceService
+  img(c, 'assets/logos/kserve-logo.png', cx(2) - 38, Y + 16, 76, 76);
+  text(c, B[2][0] + 4, Y + 98, B[2][1] - 8, 'LLMInferenceService', 'lab', 'font-size:23px');
+  text(c, B[2][0] + 4, Y + 132, B[2][1] - 8, 'or InferenceService', 'sub', 'font-size:20px');
+  text(c, B[2][0] + 4, Y + 160, B[2][1] - 8, 'serving.kserve.io', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
+  // 4 KServe controllers
+  gear(c, cx(3), Y + 58);
+  text(c, B[3][0] + 4, Y + 104, B[3][1] - 8, 'KServe<br>controllers', 'lab');
+
+  // the Kubernetes objects KServe creates: a stack of resources
+  const RX = 1566, RW = 210;
+  rbox(c, RX + 24, Y - 24, RW, H, { stroke: SOFT, strokeWidth: 2.5 });
+  rbox(c, RX + 12, Y - 12, RW, H, { stroke: SOFT, strokeWidth: 2.5 });
+  const res = rbox(c, RX, Y, RW, H);
+  [['deploy', 'Deployments'], ['hpa', 'HPAs'], ['svc', 'Services'], ['ing', 'Routes']].forEach(([ic, lb], r) => {
+    const y = Y + 14 + r * 44;
+    img(c, `assets/k8s/${ic}.svg`, RX + 14, y, 40, 40);
+    text(c, RX + 60, y + 9, 146, lb, 'sub', 'text-align:left;font-size:19px;font-weight:500;color:' + INK);
   });
 
-  arrow(c, [[328, M], [372, M]], { from: you, to: ids[0] });
+  arrow(c, [[284, M], [B[0][0] - 8, M]], { from: you, to: ids[0] });
+  text(c, 274, M - 38, 90, 'creates', 'chip', 'font-size:19px');
   for (let i = 0; i < 3; i++) arrow(c, [[B[i][0] + B[i][1] + 8, M], [B[i + 1][0] - 8, M]], { from: ids[i], to: ids[i + 1] });
+  text(c, 884, M - 62, 116, 'reconciles<br>into', 'chip', 'font-size:20px;line-height:1.2');
+  arrow(c, [[B[3][0] + B[3][1] + 8, M], [RX - 8, M]], { from: ids[3], to: res });
 
-  // status and endpoint flow back to the Instance
+  // provider-kserve writes status and endpoints back to the Instance
   const lane = 732;
-  arrow(c, [[1608, Y + H + 6], [1608, lane], [503, lane], [503, Y + H + 6]], { stroke: VIO, strokeLineDash: [14, 10], from: ids[3], to: ids[0] });
-  rbox(c, 840, lane - 22, 470, 44, { r: 22, stroke: VIO, strokeWidth: 2.5 });
-  text(c, 840, lane - 14, 470, 'status + endpoint written back', 'chip', 'font-size:22px;font-weight:600');
-  rbox(c, 372, 772, 540, 50, { r: 25, stroke: INK, strokeWidth: 2, fill: '#EDE9FE' });
-  line(c, [[394, 797], [404, 808], [424, 784]], { stroke: VIO, strokeWidth: 4, roughness: .6 });
-  text(c, 436, 783, 470, 'Ready · https://qwen-demo…/v1', 'chip', 'text-align:left;color:' + TXT + ';font-size:22px');
+  arrow(c, [[cx(1), Y + H + 6], [cx(1), lane], [cx(0), lane], [cx(0), Y + H + 6]], { stroke: VIO, strokeLineDash: [14, 10], from: ids[1], to: ids[0] });
+  rbox(c, (cx(0) + cx(1)) / 2 - 125, lane - 21, 250, 42, { r: 21, stroke: VIO, strokeWidth: 2.5 });
+  text(c, (cx(0) + cx(1)) / 2 - 125, lane - 11, 250, 'status, endpoints', 'chip', 'font-size:21px;font-weight:600');
+  rbox(c, 362, 776, 520, 50, { r: 25, stroke: INK, strokeWidth: 2, fill: '#EDE9FE' });
+  line(c, [[384, 801], [394, 812], [414, 788]], { stroke: VIO, strokeWidth: 4, roughness: .6 });
+  text(c, 426, 787, 450, 'Ready · https://qwen-demo…/v1', 'chip', 'text-align:left;color:' + TXT + ';font-size:22px');
 
-  text(c, 260, 842, 1400, 'Declare intent. Get an endpoint back.', 'take', 'font-size:56px');
-  underline(c, 1060, 1492, 916);
+  text(c, 260, 846, 1400, 'Declare intent. Get an endpoint back.', 'take', 'font-size:56px');
+  underline(c, 1060, 1492, 920);
+}
+
+function gear(c, cx, cy, r = 34) {
+  const pts = [];
+  for (let k = 0; k < 16; k++) {
+    const a = (k / 16) * Math.PI * 2, rr = k % 2 ? r * 0.78 : r;
+    pts.push([cx + rr * Math.cos(a - .1), cy + rr * Math.sin(a - .1)], [cx + rr * Math.cos(a + .1), cy + rr * Math.sin(a + .1)]);
+  }
+  poly(c, pts, { fill: SOFT, fillStyle: 'hachure', hachureGap: 5, strokeWidth: 2.5, roughness: .7 });
+  circle(c, cx, cy, r * 0.62, { fill: PAPER, strokeWidth: 2.5 });
 }
 
 function slide6() {
@@ -461,26 +485,35 @@ function slide6() {
 
 function slide7() {
   const c = ctxFor(7); chrome(c);
-  text(c, 108, 236, 900, 'Thank you', 'take', 'text-align:left;font-size:112px;color:' + TXT);
-  underline(c, 116, 470, 384);
+  c.el.querySelector('.pageno').remove();   // the speaker photo owns the bottom-right corner
+  text(c, 108, 226, 900, 'Thank you', 'take', 'text-align:left;font-size:104px;color:' + TXT);
+  underline(c, 116, 450, 366);
 
-  img(c, 'assets/brand/speaker-photo.png', 116, 414, 112, 112);
-  circle(c, 172, 470, 124, { fill: 'none', fillStyle: 'solid', stroke: VIO, strokeWidth: 3 });
-  text(c, 260, 418, 800, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:44px;font-weight:700');
-  text(c, 260, 478, 760, 'Backend Engineer, Cloud9 · OpenEverest, provider-kserve', 'sub', 'text-align:left;font-size:23px');
+  text(c, 112, 396, 900, 'Atharva Mhaske', 'lab', 'text-align:left;font-size:46px;font-weight:700');
+  const bio = ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 mentee',
+               'Member, OpenTelemetry project', 'I love FOSS and contribute to multiple CNCF projects'];
+  bio.forEach((t, i) => {
+    const y = 468 + i * 44;
+    circle(c, 124, y + 17, 12, { fill: VIO, stroke: INK, strokeWidth: 1.5, roughness: .6 });
+    text(c, 146, y, 860, t, 'desc', 'font-size:25px');
+  });
 
-  rbox(c, 112, 588, 300, 300, { r: 20, strokeWidth: 3 });
-  img(c, 'assets/brand/speaker-qr.svg', 136, 612, 252, 252);
-  text(c, 446, 600, 560, 'Scan for my speaker page', 'lab', 'text-align:left;font-size:28px');
-  text(c, 446, 642, 560, 'eventyay.com/fossasia/ots2026/<br>speakers/ZNTNQ3', 'sub', 'text-align:left;font-size:22px');
-  text(c, 446, 740, 600, 'github.com/atharvamhaske', 'lab', 'text-align:left;font-size:30px;color:' + INK);
-  text(c, 446, 790, 600, 'Try it: github.com/openeverest/provider-kserve', 'sub', 'text-align:left;font-size:22px');
+  rbox(c, 112, 664, 250, 250, { r: 18, strokeWidth: 3 });
+  img(c, 'assets/brand/speaker-qr.svg', 129, 681, 216, 216);
+  text(c, 394, 670, 600, 'Scan for my speaker page', 'lab', 'text-align:left;font-size:27px');
+  text(c, 394, 710, 600, 'eventyay.com/fossasia/ots2026/<br>speakers/ZNTNQ3', 'sub', 'text-align:left;font-size:21px');
+  text(c, 394, 794, 600, 'github.com/atharvamhaske', 'lab', 'text-align:left;font-size:28px;color:' + INK);
+  text(c, 394, 840, 620, 'Try it: github.com/openeverest/provider-kserve', 'sub', 'text-align:left;font-size:21px');
 
+  // soft violet disc behind the speaker, drawn first so the sketch and photo sit on top
+  circle(c, 1700, 640, 520, { fill: '#E4DEFC', fillStyle: 'solid', stroke: SOFT, strokeWidth: 2.5 });
   if (params.get('art') === '1') {
-    img(c, 'assets/brand/devcon-8-india-bg.png', 1000, 290, 840, 640, 'object-position:right bottom');
+    img(c, 'assets/brand/devcon-8-india-bg.png', 1000, 420, 700, 520, 'object-position:left bottom');
   } else {
-    gatewayOfIndia(c, 1050, 860, 1);
+    gatewayOfIndia(c, 1070, 900, 0.76);
   }
+  // the speaker, cut out from the event photo, standing in front of the Gateway
+  img(c, 'assets/brand/speaker-cutout.png', 1500, 272, 384, 808, 'object-fit:cover;object-position:top');
 }
 
 /* Gateway of India, Mumbai: a hand-drawn front elevation in violet ink. */
@@ -531,7 +564,7 @@ function gatewayOfIndia(c, x0, ground, s) {
   [[80, 520], [150, 560]].forEach(([bx, by]) =>
     line(c, [[X(bx - 22), Y(by + 6)], [X(bx - 9), Y(by + 12)], [X(bx), Y(by)], [X(bx + 9), Y(by + 12)], [X(bx + 22), Y(by + 6)]], { curve: true, stroke: INK, strokeWidth: 2.5 }));
   exRec(c, 'rectangle', X(-30), Y(500), 820 * s, 500 * s, opts({ strokeWidth: 2 }));
-  text(c, X(140), Y(-70), 480, 'Gateway of India, Mumbai', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
+  text(c, X(380) - 240, Y(-70), 480, 'Gateway of India, Mumbai', 'sub', 'font-size:20px;color:' + INK + ';font-weight:500');
 }
 
 Promise.all([400, 500, 600, 700].map(w => document.fonts.load(w + ' 24px Poppins'))).then(() => {
