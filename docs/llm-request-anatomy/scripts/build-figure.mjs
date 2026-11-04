@@ -32,7 +32,13 @@ const pose0 = MODEL.poseAt(0);
 const items = [...FIG.statics(k, P), ...FIG.live(k, P, pose0, { fan: 0 })];
 const boxes = Object.fromEntries(Object.entries(FIG.STATION_PLANS).map(([id, [plan, z0, z1]]) => [id, DRAW.screenBox(k, P, plan, z0, z1)]));
 const stationText = Object.fromEntries(MODEL.STATIONS.map((s) => [s.id, `${s.name} · ${s.does}`]));
-Object.assign(stationText, FIG.STATION_TEXT || { console: "OpenEverest console · Instance → provider-kserve → LLMInferenceService → KServe objects, status written back" });
+Object.assign(stationText, {
+  console: "OpenEverest · Instance → provider-kserve → LLMInferenceService → KServe objects, status and endpoint written back",
+  bin401: "401 bin · a wrong or foreign key is refused by the Gateway's SecurityPolicy before any model is reached",
+  bin429: "429 bin · past 300 tokens in the hour the Gateway refuses the key's requests until the hour rolls over",
+  tape: "Tape · the answer streams back as SSE data: chunks, one tick per token, through the same Gateway",
+  k8s: "Kubernetes · everything on the bench runs in one cluster: Envoy, KServe, vLLM, OpenEverest",
+}, FIG.STATION_TEXT || {});
 
 const svg = k.figureSvg({ width: FIG.WIDTH, height: FIG.HEIGHT, label: FIG.CARD.label, body: DRAW.layerSvg(items) + FIG.labelsSvg(k, P) });
 
@@ -68,7 +74,9 @@ const PAGE_CSS = `<style>
 [data-station][data-on] .iso-solid>.iso-top{fill:var(--anatomy-lit-top)}
 .iso-label{font-family:var(--anatomy-mono);letter-spacing:.06em;fill:var(--anatomy-text)}
 .iso-label-name{font-size:7.4px;fill:var(--anatomy-strong);font-weight:600}
-.iso-label-line{font-size:6.2px;fill:var(--anatomy-muted)}
+.iso-label-line{font-size:6.2px;fill:var(--anatomy-muted);opacity:0;transition:opacity 220ms var(--anatomy-ease)}
+.iso-label[data-on] .iso-label-line{opacity:1}
+@media (prefers-reduced-motion:reduce){.iso-label-line{transition:none}}
 .iso-label[data-on] .iso-label-name{fill:var(--anatomy-lit)}
 .iso-label[data-on] .iso-label-line{fill:var(--anatomy-text)}
 [data-station][data-on] .iso-solid>.iso-shade{fill:var(--anatomy-lit-shade)}

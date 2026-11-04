@@ -35,7 +35,7 @@ function layout(k) {
     [...k.boxCorners(FLOOR, -FLOOR_H - FOOT_H, 0), [FLOOR.x - 190, FRONT, 0], [FLOOR.x + FLOOR.w + 40, FRONT, 0], [RACK.x - 8, RACK.y, RACK_TOP + 6], [RACK.x + RACK.w + 8, FRONT, RACK_TOP + 6], [TABLE.x, TABLE.y, TABLE_H + 32]],
     WIDTH,
     HEIGHT,
-    { pad: 8, headroom: 8, azimuth: 86, elevation: 24 },
+    { pad: 8, headroom: 8, azimuth: 70, elevation: 26 },
   );
 }
 
@@ -119,7 +119,7 @@ function statics(k, P) {
   // the patch cable from the laptop to the panel, and the front cable down the units
   const cable = patchCable();
   put(L(k, k.pathOf(cable.map((p) => at(k, P, p))), { tone: "mid" }) + D(k, [at(k, P, cable[0]), at(k, P, cable[cable.length - 1])], { size: 0.8, tone: "mid" }), [-100, CABLE_Y, 120], 30);
-  put(L(k, k.segment([CABLE_U, CABLE_Y, PORT_Z("dns")], [CABLE_U, CABLE_Y, PORT_Z("gpu") + 2], P), { tone: "mid" }) + D(k, Object.keys(UNITS).filter((id) => id !== "console").map((id) => at(k, P, [CABLE_U, CABLE_Y, PORT_Z(id)])), { size: 0.8, tone: "mid" }), [CABLE_U, CABLE_Y, 80], 30);
+  put(L(k, k.segment([CABLE_U, CABLE_Y, PORT_Z("dns")], [CABLE_U, CABLE_Y, PORT_Z("gpu")], P), { tone: "mid" }) + D(k, Object.keys(UNITS).filter((id) => id !== "console").map((id) => at(k, P, [CABLE_U, CABLE_Y, PORT_Z(id)])), { size: 0.8, tone: "mid" }), [CABLE_U, CABLE_Y, 80], 30);
   return items;
 }
 function patchCable() {
@@ -275,7 +275,9 @@ function labelsSvg(k, P) {
       const kneeX = side === "right" ? tx - 6 : tx + 6;
       out.push(k.lineSvg(k.pathOf([[l.ax, l.ay], [side === "right" ? l.ax + 8 : l.ax - 8, l.ay], [kneeX, l.ly - 2]]), { tone: "lo", free: "end" }));
       out.push(k.dotsSvg([[l.ax, l.ay]], { size: 1.1, tone: "hi" }));
-      out.push(`<text class="iso-label" data-id="${l.id}" x="${tx.toFixed(1)}" y="${l.ly.toFixed(1)}" text-anchor="${anchor}"><tspan class="iso-label-name">${l.n ? l.n + " · " : ""}${l.name}</tspan><tspan class="iso-label-line" x="${tx.toFixed(1)}" dy="${(lineSize + 1.6).toFixed(1)}">${l.line}</tspan></text>`);
+      const wide = Math.max(((l.n ? l.n.length + 3 : 0) + l.name.length) * nameSize * 0.72, l.line.length * lineSize * 0.74) + 4;
+      const box = anchor === "start" ? [tx, l.ly - nameSize, tx + wide, l.ly + lineSize + 4] : [tx - wide, l.ly - nameSize, tx, l.ly + lineSize + 4];
+      out.push(`<text class="iso-label" data-id="${l.id}" data-box="${box.map((v) => v.toFixed(1)).join(",")}" x="${tx.toFixed(1)}" y="${l.ly.toFixed(1)}" text-anchor="${anchor}"><tspan class="iso-label-name">${l.n ? l.n + " · " : ""}${l.name}</tspan><tspan class="iso-label-line" x="${tx.toFixed(1)}" dy="${(lineSize + 1.6).toFixed(1)}">${l.line}</tspan></text>`);
     }
   }
   return `<g data-labels>${out.join("")}</g>`;

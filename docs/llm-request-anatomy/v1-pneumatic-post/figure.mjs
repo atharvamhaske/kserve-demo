@@ -37,7 +37,7 @@ function layout(k) {
     [...k.boxCorners(PLATE, -PLATE_H - FOOT_H, 0), [CONSOLE.x + 10, CONSOLE.y + 10, 50], [GPU.lintel.x + 40, GPU.lintel.y + 40, 54]],
     WIDTH,
     HEIGHT - 72,
-    { pad: 10, headroom: 128, azimuth: 78, elevation: 36 },
+    { pad: 10, headroom: 128, azimuth: 62, elevation: 34 },
   );
   return P;
 }
@@ -355,11 +355,11 @@ function labelsSvg(k, P) {
   };
   const out = [];
   const obstacles = Object.entries(STATION_PLANS).map(([id, [plan, z0, z1]]) => [id, screenBox(k, P, plan, z0, z1)]);
-  for (const label of stripLabels(k, P, LABELS, edges, obstacles, { width: WIDTH, height: HEIGHT, rowStep: 44, rowsBelow: 2, rowStepBelow: 26 })) {
+  for (const label of stripLabels(k, P, LABELS, edges, obstacles, { width: WIDTH, height: HEIGHT, rowStep: 36, rowsBelow: 2, rowStepBelow: 28 })) {
     const { ax, ay, x, ly, leader } = label;
     out.push(k.lineSvg(k.pathOf(leader), { tone: "lo", free: "end" }));
     out.push(k.dotsSvg([[ax, ay]], { size: 1.1, tone: "hi" }));
-    out.push(`<text class="iso-label" data-id="${label.id}" x="${x.toFixed(1)}" y="${ly.toFixed(1)}"><tspan class="iso-label-name">${label.n ? label.n + " · " : ""}${label.name}</tspan><tspan class="iso-label-line" x="${x.toFixed(1)}" dy="${(label.lineSize + 1.6).toFixed(1)}">${label.line}</tspan></text>`);
+    out.push(`<text class="iso-label" data-id="${label.id}" data-box="${label.box.map((v) => v.toFixed(1)).join(",")}" x="${x.toFixed(1)}" y="${ly.toFixed(1)}"><tspan class="iso-label-name">${label.n ? label.n + " · " : ""}${label.name}</tspan><tspan class="iso-label-line" x="${x.toFixed(1)}" dy="${(label.lineSize + 1.6).toFixed(1)}">${label.line}</tspan></text>`);
   }
   return `<g data-labels>${out.join("")}</g>`;
 }
