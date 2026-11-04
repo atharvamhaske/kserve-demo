@@ -18,7 +18,7 @@ To open the deck in Google Slides, upload the PPTX to Google Drive and choose Op
 | # | Time | Slide | Takeaway |
 |---|---|---|---|
 | 1 | 0:00-0:10 | Title, speaker photo, name and "Engineer at Cld9.ai" | |
-| 2 | 0:10-0:25 | Who am I: heading, name and bio in the title slide's type, and the photo in a hand-drawn Excalidraw frame | |
+| 2 | 0:10-0:25 | Who am I: a small label, the name in large bold type, the bio, and the photo in a hand-drawn Excalidraw frame | |
 | 3 | 0:25-0:55 | The problem from the talk abstract. Where did this request go? Your app calls `/v1/chat/completions`, the cluster hides DNS, gateway, proxy, autoscaler and Pod, and a 404, a hang, a 504 or a 429 comes back. | Teams debug the symptom because they never mapped the path. |
 | 4 | 0:55-1:50 | Client, DNS + Service, Gateway, Model proxy, scale from zero, then a vLLM (GPU) or Ollama (CPU) Pod streams tokens back | It's never one Pod. |
 | 5 | 1:50-2:50 | The same path with each failure marked on its hop | |

@@ -164,12 +164,12 @@ function slide2() {
   const c = ctxFor(2); chrome(c);
   img(c, 'diagrams/slide-02.svg', 0, 0, 1920, 1080);
   text(c, 1380, 38, 500, 'Mumbai, India · 5 Nov 2026', 'desc', 'font-size:24px;text-align:right;color:' + MUTED);
-  // Same type scale as the title slide: the heading like the talk title, the name like the speaker line.
-  text(c, 110, 280, 1040, 'Who am I', 'h1', 'font-size:70px;line-height:1.32');
-  text(c, 112, 422, 1040, 'Atharva Mhaske', 'desc', 'font-size:44px;color:#4B4763');
+  // The name is what people should read first: a small label above it, the bio below.
+  text(c, 112, 300, 1040, 'Who am I', 'kicker', 'font-size:24px');
+  text(c, 108, 332, 1060, 'Atharva Mhaske', 'h1', 'font-size:84px;font-weight:700;line-height:1.25');
   ['AI and Infra Engineer at Cld9.ai', 'Former Google Summer of Code 2026 Mentee', 'Member @OpenTelemetry project',
    'I love FOSS and contribute to multiple OSS projects under CNCF'].forEach((t, i) => {
-    text(c, 140, 528 + i * 72, 1020, t, 'desc', 'font-size:29px');
+    text(c, 140, 498 + i * 72, 1020, t, 'desc', 'font-size:30px');
   });
 }
 
