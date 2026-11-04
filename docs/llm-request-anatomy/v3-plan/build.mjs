@@ -9,7 +9,11 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 let src = readFileSync(join(HERE, "..", "v1-pneumatic-post", "figure.mjs"), "utf8");
 const swap = (a, b) => { if (!src.includes(a)) throw new Error("v1 figure changed: " + a); src = src.replace(a, b); };
+<<<<<<< HEAD
 swap("{ pad: 10, headroom: 128, azimuth: 62, elevation: 34 }", "{ pad: 10, headroom: 120, azimuth: 90, elevation: 58 }");
+=======
+swap("{ pad: 10, headroom: 128, azimuth: 78, elevation: 36 }", "{ pad: 10, headroom: 120, azimuth: 90, elevation: 58 }");
+>>>>>>> origin/main
 swap("const WIDTH = 920;\nconst HEIGHT = 450;", "const WIDTH = 920;\nconst HEIGHT = 500;");
 swap('fig: "Fig 1",', 'fig: "Fig 3",');
 swap('page: "What happens to an LLM request · the sorting line",', 'page: "What happens to an LLM request · the plan view",');
