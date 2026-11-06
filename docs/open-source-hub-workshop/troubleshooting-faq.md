@@ -70,13 +70,64 @@ A repeated `ui` command keeps a live recorded process and replaces a stale one.
 
 ### Why does SSH fail?
 
-Test the base connection from the presenter machine:
+Set the connection values on the presenter machine. Use the user, host, port, and private key shown by the VM provider:
 
 ```bash
-ssh -v "$GPU_HOST" 'hostname'
+SSH_USER=ubuntu
+SSH_HOST=203.0.113.10
+SSH_PORT=22
+SSH_KEY=$HOME/.ssh/cloud_gpu
+
+chmod 600 "$SSH_KEY"
+ssh -vv \
+  -o IdentitiesOnly=yes \
+  -i "$SSH_KEY" \
+  -p "$SSH_PORT" \
+  "$SSH_USER@$SSH_HOST" hostname
 ```
 
-Fix the username, host, key, VPN, security group, SSH service, or custom port. Then add the forwards. Use `-p 2222` for a non-default port.
+The final error identifies the next check:
+
+| Error | Check |
+|---|---|
+| `Connection timed out` | Confirm the VM is running, the public address is current, and its firewall allows inbound SSH on `SSH_PORT`. |
+| `Connection refused` | Confirm the SSH port and wait for the VM to finish booting. Use the provider console to check the SSH service. |
+| `Permission denied (publickey)` | Confirm `SSH_USER`, `SSH_KEY`, and the public key registered when the VM was created. |
+| `REMOTE HOST IDENTIFICATION HAS CHANGED` | Stop. Verify the replacement host fingerprint through the provider dashboard or console before changing `known_hosts`. |
+
+For `Permission denied (publickey)`, print the public key derived from the selected private key:
+
+```bash
+ssh-keygen -y -f "$SSH_KEY"
+```
+
+Compare it with the public key registered for the VM. If the VM has a different key, add the correct public key through the provider console or recreate the VM. Never upload or send the private key.
+
+For a changed host key, get the fingerprint offered by the host:
+
+```bash
+ssh-keyscan -p "$SSH_PORT" -t ed25519 "$SSH_HOST" 2>/dev/null |
+  ssh-keygen -lf -
+```
+
+Compare the complete SHA256 fingerprint with the value shown by the provider. Do not continue if they differ. After they match, remove only the stale entry and reconnect:
+
+```bash
+ssh-keygen -R "$SSH_HOST"
+ssh -o StrictHostKeyChecking=accept-new \
+  -o IdentitiesOnly=yes \
+  -i "$SSH_KEY" \
+  -p "$SSH_PORT" \
+  "$SSH_USER@$SSH_HOST" hostname
+```
+
+For a non-default port, the stale entry may use the bracketed form:
+
+```bash
+ssh-keygen -R "[$SSH_HOST]:$SSH_PORT"
+```
+
+Do not add the UI port forwards until the base `hostname` command succeeds.
 
 ### Why is a presenter port already in use?
 
