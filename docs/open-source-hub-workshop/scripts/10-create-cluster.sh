@@ -6,7 +6,7 @@ source "$(dirname -- "$0")/lib.sh"
 require_commands kubectl minikube sudo
 
 bpf_state_file=$STATE_DIR/bpf_jit_harden
-current_bpf_value=$(sysctl -n net.core.bpf_jit_harden)
+current_bpf_value=$(sudo sysctl -n net.core.bpf_jit_harden)
 if [[ ! -f $bpf_state_file ]]; then
   printf '%s\n' "$current_bpf_value" >"$bpf_state_file"
 fi
