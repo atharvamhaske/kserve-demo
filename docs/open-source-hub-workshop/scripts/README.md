@@ -25,7 +25,7 @@ The numbered scripts implement each stage. Their numbers show the normal order, 
 
 Keep `minikube tunnel` running in a second terminal during HTTPS and API demonstrations.
 
-The bootstrap targets Ubuntu 24.04 LTS on `x86_64`. Install the NVIDIA driver, Docker Engine, and NVIDIA Container Toolkit before running it. The script checks those host components but does not change them.
+The bootstrap targets Ubuntu 22.04 and 24.04 LTS on `x86_64`. Install the NVIDIA driver, Docker Engine, and NVIDIA Container Toolkit before running it. The script checks those host components but does not change them.
 
 The workshop uses Minikube and does not install kind.
 

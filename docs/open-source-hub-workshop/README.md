@@ -104,7 +104,7 @@ open-source-hub-workshop/
 
 ## Fresh Ubuntu host
 
-Use Ubuntu 24.04 LTS on an `x86_64` NVIDIA GPU host.
+Use Ubuntu 22.04 or 24.04 LTS on an `x86_64` NVIDIA GPU host.
 
 ### Optional JarvisLabs L4 VM
 
@@ -115,14 +115,14 @@ To rent an L4 from [JarvisLabs.ai](https://jarvislabs.ai/):
 1. Open Compute, then Virtual Machines.
 2. Select Launch VM.
 3. Select GPU, then choose L4.
-4. Use Ubuntu 24.04 LTS on `x86_64` with at least 32 GiB of system memory.
+4. Use Ubuntu 22.04 or 24.04 LTS on `x86_64` with at least 32 GiB of system memory.
 5. Add your SSH public key, launch the VM, and record its SSH address and user.
 
 If SSH fails, follow the [SSH troubleshooting guide](troubleshooting-faq.md#why-does-ssh-fail) before starting the workshop.
 
 Stop or destroy the VM after the workshop to stop compute charges. Pricing and availability can change.
 
-This workshop is not sponsored by or affiliated with JarvisLabs. Any compatible Ubuntu 24.04 NVIDIA GPU host works.
+This workshop is not sponsored by or affiliated with JarvisLabs. Any compatible Ubuntu 22.04 or 24.04 NVIDIA GPU host works.
 
 The host owner must install these components first:
 
