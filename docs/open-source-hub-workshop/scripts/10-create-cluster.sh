@@ -23,6 +23,8 @@ minikube start -p "$PROFILE" \
   --memory=32768
 
 kubectl config use-context "$PROFILE"
+kube wait --for=condition=Ready "node/$PROFILE" --timeout=10m
+kube -n default wait --for=create serviceaccount/default --timeout=5m
 kube get node "$PROFILE" -o wide
 kube get node "$PROFILE" -o jsonpath='{.status.allocatable.nvidia\.com/gpu}{"\n"}'
 
