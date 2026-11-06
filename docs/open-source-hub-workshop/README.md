@@ -55,8 +55,8 @@ Use a native Ubuntu NVIDIA GPU host. Do not use WSL for this path.
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends git
 
-git clone https://github.com/atharvamhaske/kserve-demo.git
-cd kserve-demo/docs/open-source-hub-workshop
+git clone https://github.com/atharvamhaske/kserve-demo.git "$HOME/kserve-demo"
+cd "$HOME/kserve-demo/docs/open-source-hub-workshop"
 ./scripts/workshop.sh help
 ```
 
@@ -132,6 +132,15 @@ The host owner must install these components first:
 
 The workshop does not automate the NVIDIA driver, Docker daemon, NVIDIA runtime, or Docker group membership. Those changes can affect the kernel, Secure Boot, remote access, and root-level privileges.
 
+If `docker info` reports `permission denied` for `/var/run/docker.sock`, add the workshop user to the Docker group:
+
+```bash
+sudo usermod -aG docker "$USER"
+newgrp docker
+```
+
+`usermod` updates future login sessions. Run `newgrp docker` once to open a shell with the new membership, or log out and back in. Membership in the Docker group grants root-level control of the host.
+
 Verify the GPU container path before continuing:
 
 ```bash
@@ -146,18 +155,14 @@ Read the [fresh-host tooling sources](release-sources.md#fresh-host-tooling) whe
 
 The checked-in `config/workshop.env` is safe to use as-is. It contains names and version pins, not credentials.
 
-From a presenter-machine checkout, enter the workshop directory and upload the reviewed file:
+On the GPU host, enter the workshop directory from any current path and select the checked-in file:
 
 ```bash
-cd kserve-demo/docs/open-source-hub-workshop
-scp config/workshop.env "$GPU_HOST:~/workshop.env"
+cd "$HOME/kserve-demo/docs/open-source-hub-workshop"
+export WORKSHOP_CONFIG="$PWD/config/workshop.env"
 ```
 
-On the GPU host, select that file before running any workshop command:
-
-```bash
-export WORKSHOP_CONFIG="$HOME/workshop.env"
-```
+Do not copy this file with `scp`. The repository clone already contains it.
 
 Keep the fixed namespaces from the checked-in file. Do not add passwords, API keys, cloud credentials, or host addresses.
 
