@@ -34,7 +34,7 @@ Install cert-manager before provider-kserve. A separate release avoids the same-
 
 ## Fresh-host tooling
 
-The bootstrap targets Ubuntu 24.04 LTS on `x86_64`.
+The bootstrap targets Ubuntu 22.04 and 24.04 LTS on `x86_64`.
 
 Before bootstrap, the host owner installs the NVIDIA driver, Docker Engine, and NVIDIA Container Toolkit. The script does not automate kernel modules, Secure Boot enrollment, daemon replacement, or Docker group membership.
 

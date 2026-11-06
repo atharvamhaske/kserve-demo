@@ -10,7 +10,10 @@ require_commands sudo uname
 
 # shellcheck disable=SC1091
 source /etc/os-release
-[[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || fail 'bootstrap requires Ubuntu 24.04 LTS'
+case "$ID:$VERSION_ID" in
+  ubuntu:22.04 | ubuntu:24.04) ;;
+  *) fail "bootstrap requires Ubuntu 22.04 or 24.04 LTS; found ${ID:-unknown} ${VERSION_ID:-unknown}" ;;
+esac
 require_commands apt-get
 
 for variable_name in KUBECTL_VERSION MINIKUBE_VERSION HELM_VERSION GO_VERSION TILT_VERSION; do
