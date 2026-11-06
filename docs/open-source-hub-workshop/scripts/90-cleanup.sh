@@ -27,7 +27,7 @@ fi
 bpf_state_file=$STATE_DIR/bpf_jit_harden
 if [[ -f $bpf_state_file ]]; then
   original_bpf_value=$(cat "$bpf_state_file")
-  current_bpf_value=$(sysctl -n net.core.bpf_jit_harden)
+  current_bpf_value=$(sudo sysctl -n net.core.bpf_jit_harden)
   if [[ $current_bpf_value != "$original_bpf_value" ]]; then
     sudo sysctl -w "net.core.bpf_jit_harden=$original_bpf_value"
   fi
