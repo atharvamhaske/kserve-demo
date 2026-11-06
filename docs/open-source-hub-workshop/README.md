@@ -106,6 +106,22 @@ open-source-hub-workshop/
 
 Use Ubuntu 24.04 LTS on an `x86_64` NVIDIA GPU host.
 
+### Optional JarvisLabs L4 VM
+
+The checked-in Qwen3 0.6B profile needs one GPU. An NVIDIA L4 with 24 GB of VRAM is sufficient. Larger GPUs are unnecessary for this workshop.
+
+To rent an L4 from [JarvisLabs.ai](https://jarvislabs.ai/):
+
+1. Open Compute, then Virtual Machines.
+2. Select Launch VM.
+3. Select GPU, then choose L4.
+4. Use Ubuntu 24.04 LTS on `x86_64` with at least 32 GiB of system memory.
+5. Add your SSH public key, launch the VM, and record its SSH address and user.
+
+Stop or destroy the VM after the workshop to stop compute charges. Pricing and availability can change.
+
+This workshop is not sponsored by or affiliated with JarvisLabs. Any compatible Ubuntu 24.04 NVIDIA GPU host works.
+
 The host owner must install these components first:
 
 - A working NVIDIA driver. `nvidia-smi` must succeed.
