@@ -118,6 +118,8 @@ To rent an L4 from [JarvisLabs.ai](https://jarvislabs.ai/):
 4. Use Ubuntu 24.04 LTS on `x86_64` with at least 32 GiB of system memory.
 5. Add your SSH public key, launch the VM, and record its SSH address and user.
 
+If SSH fails, follow the [SSH troubleshooting guide](troubleshooting-faq.md#why-does-ssh-fail) before starting the workshop.
+
 Stop or destroy the VM after the workshop to stop compute charges. Pricing and availability can change.
 
 This workshop is not sponsored by or affiliated with JarvisLabs. Any compatible Ubuntu 24.04 NVIDIA GPU host works.
